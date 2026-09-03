@@ -1,0 +1,91 @@
+name: susthayan
+description: Susthayan customer app - browse, order, and track medicines.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.9.0 <4.0.0'
+  flutter: '>=3.44.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State management. Provider rather than Riverpod/Bloc - deliberately the
+  # simpler, more established choice given this code can't be compile-tested
+  # here; correctness matters more than chasing the newest idiom. Riverpod
+  # is a reasonable later migration if the team wants it, not a dead end.
+  provider: ^6.1.2
+
+  # Networking
+  dio: ^5.7.0
+
+  # Secure, persistent storage for the auth token (Keychain on iOS,
+  # EncryptedSharedPreferences on Android) - never plain SharedPreferences
+  # for anything auth-related.
+  flutter_secure_storage: ^9.2.2
+
+  # Images - product photos, banners
+  cached_network_image: ^3.4.1
+
+  # Icons - SVG support for when real icon assets are provided (see
+  # AppIcons/AppIcon in core/constants and core/widgets). Material icons
+  # are the fallback until then.
+  flutter_svg: ^2.0.10+1
+
+  # Camera/gallery picker - prescription upload
+  image_picker: ^1.1.2
+
+  # Razorpay checkout SDK - opens the native payment sheet after the
+  # backend's initiate() call returns a gateway order. See payment_screen.dart
+  # for the full flow and an important caveat about this specifically.
+  razorpay_flutter: ^1.4.0
+
+  # Formatting - currency (₹), dates
+  intl: ^0.19.0
+
+  # Typography - see core/theme/app_theme.dart for the exact family; swap
+  # here if the real design used a licensed/custom font instead.
+  google_fonts: ^6.2.1
+
+  # Pull-to-refresh, already idiomatic Flutter, no extra package needed
+  # (RefreshIndicator is built in) - noted here so it's not missed as a gap.
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Generates all required Android/iOS icon sizes from one source image -
+  # run `dart run flutter_launcher_icons` after placing the real logo at
+  # the path below. Not run yet since the source file doesn't exist here.
+  flutter_launcher_icons: ^0.14.3
+
+# Placeholder path - drop the real 1024x1024 logo file here (exact
+# filename below) and run the command above. remove_alpha_ios matters
+# specifically because the Susthayan logo mark has real transparency
+# (confirmed earlier) and the App Store rejects/mishandles transparent
+# icons - this isn't a generic default, it's needed for this exact asset.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/SusthyanLogo.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  # Adaptive icon (Android 8+) - foreground/background split so the
+  # launcher can mask it into a circle/squircle/square depending on the
+  # device. Left commented until the real logo is in hand - whether the
+  # mark needs its own dedicated foreground crop (vs. reusing the same
+  # square image) depends on how much padding it actually has once seen
+  # in isolation, not something to guess at blind.
+  # adaptive_icon_background: "#208060"
+  # adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/icons/
+    - assets/images/
+    - assets/images/products/
+    - assets/images/home_icons/
