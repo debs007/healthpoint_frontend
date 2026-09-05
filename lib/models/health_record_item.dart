@@ -15,6 +15,11 @@ class HealthRecordItem {
   final DateTime recordDate;
   final String? notes;
 
+  /// True for a composite "prescription-N" entry, never a real
+  /// HealthRecord row - these come from a separate model entirely and
+  /// aren't deletable through the health-records delete endpoint.
+  bool get isPrescription => id.startsWith('prescription-');
+
   factory HealthRecordItem.fromJson(Map<String, dynamic> json) {
     return HealthRecordItem(
       // Backend sends either an int (health_records) or a prefixed string

@@ -48,6 +48,8 @@ dependencies:
   # here if the real design used a licensed/custom font instead.
   google_fonts: ^6.2.1
 
+  url_launcher: ^6.3.1
+
   # Pull-to-refresh, already idiomatic Flutter, no extra package needed
   # (RefreshIndicator is built in) - noted here so it's not missed as a gap.
 

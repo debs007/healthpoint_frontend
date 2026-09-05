@@ -20,6 +20,19 @@ class CartService {
     await _client.post(ApiEndpoints.cartSelectFranchise, data: {'franchise_id': franchiseId});
   }
 
+  /// Throws ApiException (with the backend's real message - "invalid or
+  /// expired", "doesn't apply to anything in your cart") on a bad code,
+  /// same error-surfacing pattern as everywhere else in this app.
+  Future<Cart> applyCoupon(String code) async {
+    final response = await _client.post(ApiEndpoints.cartApplyCoupon, data: {'code': code});
+    return Cart.fromJson(response);
+  }
+
+  Future<Cart> removeCoupon() async {
+    final response = await _client.post(ApiEndpoints.cartRemoveCoupon);
+    return Cart.fromJson(response);
+  }
+
   Future<Cart> addItem(int productId, int quantity) async {
     final response = await _client.post(
       ApiEndpoints.cartItems,

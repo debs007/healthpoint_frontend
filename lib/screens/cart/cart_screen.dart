@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:susthayan/models/cart.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/cart_item.dart';
@@ -19,8 +20,22 @@ class _CartScreenState extends State<CartScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CartProvider>().loadCart();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final cartProvider = context.read<CartProvider>();
+      await cartProvider.loadCart();
+      if (!mounted || cartProvider.cart.hasFranchiseSelected) return;
+
+      // Single-store businesses shouldn't ever see a "select a store"
+      // step at all - there's nothing to actually choose. This only
+      // silently auto-picks when there is exactly one active franchise;
+      // with two or more, the picker below still shows normally, since
+      // that's a genuine choice for the customer to make.
+      final franchiseProvider = context.read<FranchiseProvider>();
+      await franchiseProvider.loadFranchises();
+      if (!mounted) return;
+      if (franchiseProvider.franchises.length == 1) {
+        await cartProvider.selectFranchise(franchiseProvider.franchises.first.id);
+      }
     });
   }
 
@@ -140,7 +155,8 @@ class _CartScreenState extends State<CartScreen> {
                   ),
                 ),
               ),
-              _CheckoutBar(subtotal: cart.subtotal, enabled: cart.hasFranchiseSelected),
+              const _CouponSection(),
+              _CheckoutBar(cart: cart, enabled: cart.hasFranchiseSelected),
             ],
           );
         },
@@ -262,10 +278,103 @@ class _StepButton extends StatelessWidget {
   }
 }
 
-class _CheckoutBar extends StatelessWidget {
-  const _CheckoutBar({required this.subtotal, required this.enabled});
+class _CouponSection extends StatefulWidget {
+  const _CouponSection();
 
-  final double subtotal;
+  @override
+  State<_CouponSection> createState() => _CouponSectionState();
+}
+
+class _CouponSectionState extends State<_CouponSection> {
+  final _controller = TextEditingController();
+  bool _isApplying = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _apply() async {
+    final code = _controller.text.trim();
+    if (code.isEmpty) return;
+
+    setState(() => _isApplying = true);
+    final cartProvider = context.read<CartProvider>();
+    final success = await cartProvider.applyCoupon(code);
+    if (!mounted) return;
+    setState(() => _isApplying = false);
+
+    if (success) {
+      _controller.clear();
+    } else if (cartProvider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(cartProvider.errorMessage!)));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cart = context.watch<CartProvider>().cart;
+
+    if (cart.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: cart.coupon != null
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(color: AppColors.success.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+              child: Row(
+                children: [
+                  Icon(Icons.local_offer_outlined, size: 16, color: AppColors.success),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '"${cart.coupon!.code}" applied',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => context.read<CartProvider>().removeCoupon(),
+                    child: Text('Remove', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  ),
+                ],
+              ),
+            )
+          : Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      isDense: true,
+                      hintText: 'Enter coupon code',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.border)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 44,
+                  child: OutlinedButton(
+                    onPressed: _isApplying ? null : _apply,
+                    child: _isApplying
+                        ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Text('Apply'),
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _CheckoutBar extends StatelessWidget {
+  const _CheckoutBar({required this.cart, required this.enabled});
+
+  final Cart cart;
   final bool enabled;
 
   @override
@@ -284,8 +393,13 @@ class _CheckoutBar extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Subtotal', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                  Text('${AppConstants.currencySymbol}${subtotal.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(cart.coupon != null ? 'Total (after discount)' : 'Subtotal', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  Text('${AppConstants.currencySymbol}${cart.total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  if (cart.coupon != null)
+                    Text(
+                      'You saved ${AppConstants.currencySymbol}${cart.coupon!.discountAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(fontSize: 10.5, color: AppColors.success, fontWeight: FontWeight.w600),
+                    ),
                 ],
               ),
             ),

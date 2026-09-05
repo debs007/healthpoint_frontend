@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_icons.dart';
@@ -9,13 +10,17 @@ import '../../core/widgets/count_badge.dart';
 import '../../core/widgets/error_state.dart';
 import '../../core/widgets/promo_carousel.dart';
 import '../../models/category.dart';
+import '../../models/health_article.dart';
 import '../../models/product.dart';
 import '../../providers/address_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/health_article_provider.dart';
 import '../../providers/home_banner_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/product_provider.dart';
 import '../cart/cart_screen.dart';
+import '../coupon/coupon_products_screen.dart';
+import '../coupon/offers_screen.dart';
 import '../lab_tests/lab_tests_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
@@ -33,10 +38,26 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProductProvider>().loadHomeData();
+    // Each load runs independently now - previously these were
+    // sequentially awaited in a single chain, so an exception thrown
+    // anywhere in loadHomeData()/loadCategoryRows() (e.g. a single
+    // malformed product) would silently prevent every load after it in
+    // this callback from ever running at all - address, banners, and
+    // health articles included, even though none of them were actually
+    // related to the failure. Each one now fails on its own, if it fails
+    // at all, and never takes any other section down with it.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final productProvider = context.read<ProductProvider>();
+      try {
+        await productProvider.loadHomeData();
+        if (mounted) await productProvider.loadCategoryRows();
+      } catch (_) {
+        // Already-empty state is the safe fallback here - the sections
+        // below must still get their chance to load regardless.
+      }
       context.read<AddressProvider>().loadAddresses();
       context.read<HomeBannerProvider>().loadBanners();
+      context.read<HealthArticleProvider>().loadArticles();
     });
   }
 
@@ -172,6 +193,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 _ProductRow(products: provider.products),
+                const SizedBox(height: 8),
+                const _CategoryProductRows(),
                 const SizedBox(height: 24),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -229,7 +252,7 @@ class _SearchBarState extends State<_SearchBar> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppColors.surfaceTint.withValues(alpha: 0.4),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -242,17 +265,24 @@ class _SearchBarState extends State<_SearchBar> {
               textInputAction: TextInputAction.search,
               onSubmitted: _submit,
               decoration: InputDecoration(
+                filled: false,
+
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+
                 isDense: true,
                 contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 hintText: 'Search for medicines, health products...',
-                hintStyle: TextStyle(color: AppColors.textMuted, fontSize: 14),
+                hintStyle: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 14,
+                ),
               ),
             ),
-          ),
-          InkWell(
-            onTap: () => _submit(_controller.text),
-            child: AppIcon(AppIcons.scan, color: AppColors.textMuted, size: 20),
           ),
         ],
       ),
@@ -276,9 +306,17 @@ class _HomePromoCarousel extends StatelessWidget {
         return PromoCarousel(
           banners: provider.banners,
           height: 200,
-          onButtonPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No offers/coupons system exists in the API yet')),
-          ),
+          onButtonPressed: (banner) {
+            if (banner.couponId != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => CouponProductsScreen(couponId: banner.couponId!)),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('This banner isn\'t linked to an offer yet')),
+              );
+            }
+          },
         );
       },
     );
@@ -343,20 +381,39 @@ class _CategoryRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: List.generate(_labels.length, (i) {
           final matched = _matchingCategory(i);
+          final matchFailed = i != 2 && i != 5 && matched == null;
           return Padding(
             padding: EdgeInsets.only(right: i == _labels.length - 1 ? 0 : 16),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => i == 2
-                      ? const LabTestsScreen()
-                      : ProductListScreen(
-                          categoryId: matched?.id,
-                          categoryName: matched?.name ?? (i == 5 ? null : _labels[i]),
-                        ),
-                ),
-              ),
+              onTap: () {
+                if (i == 2) {
+                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => const LabTestsScreen()));
+                  return;
+                }
+                if (matchFailed) {
+                  // A failed match must never silently fall through to
+                  // ProductListScreen's "no filter" behavior - that
+                  // screen can't tell "show everything" (View All, i==5)
+                  // apart from "a category filter was attempted and
+                  // failed to resolve" once categoryId is null either
+                  // way, so it's stopped here instead, with an honest
+                  // message rather than an unfiltered list masquerading
+                  // as a filtered one.
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Couldn\'t find a matching category for "${_labels[i]}" right now.')),
+                  );
+                  return;
+                }
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => ProductListScreen(
+                      categoryId: matched?.id,
+                      categoryName: matched?.name ?? (i == 5 ? null : _labels[i]),
+                    ),
+                  ),
+                );
+              },
               child: SizedBox(
                 width: 64,
                 child: Column(
@@ -389,11 +446,10 @@ class _CategoryRow extends StatelessWidget {
   }
 }
 
-/// Upload Prescription now genuinely navigates to the real Prescriptions
-/// screen - it used to just show a message admitting that screen existed
-/// without actually going there, which was worse than either fully working
-/// or being a clearly-labeled placeholder. Quick Delivery/Offers stay
-/// honest placeholders - no backend exists for either.
+/// Upload Prescription, Quick Delivery, and Offers all navigate to real
+/// screens now - Quick Delivery goes to the full product list (a fast
+/// path to ordering, no separate "express delivery" concept exists
+/// on the backend), Offers goes to the global-coupons browse page.
 class _QuickActionRow extends StatelessWidget {
   const _QuickActionRow();
 
@@ -417,8 +473,8 @@ class _QuickActionRow extends StatelessWidget {
             icon: AppIcons.quickDelivery,
             title: 'Quick\nDelivery',
             subtitle: 'On-time delivery',
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No quick-delivery endpoint exists in the API yet')),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ProductListScreen()),
             ),
           ),
         ),
@@ -426,10 +482,10 @@ class _QuickActionRow extends StatelessWidget {
         Expanded(
           child: _QuickActionCard(
             icon: AppIcons.offers,
-            title: 'Offers',
+            title: 'Offers\nCoupons',
             subtitle: 'View all offers',
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No offers/promotions endpoint exists in the API yet')),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const OffersScreen()),
             ),
           ),
         ),
@@ -504,50 +560,97 @@ class _ProductRow extends StatelessWidget {
   }
 }
 
-/// No articles/CMS endpoint exists in the API - this is static content
-/// matching the design, not pulled from anywhere dynamic. Tapping an
-/// article says so rather than pretending to navigate somewhere real.
+/// One horizontal row per category, newest products first - sits between
+/// "Order Again" and "Health Articles". Silently shows nothing while
+/// loading or if a category has no products yet, rather than a row of
+/// empty placeholders - this section is purely additive polish, not
+/// something that should ever block or clutter the page.
+class _CategoryProductRows extends StatelessWidget {
+  const _CategoryProductRows();
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<ProductProvider>(
+      builder: (context, provider, _) {
+        final categoriesWithProducts = provider.categories.where((c) => (provider.latestByCategory[c.id]?.isNotEmpty ?? false)).toList();
+
+        if (categoriesWithProducts.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: categoriesWithProducts.expand((category) {
+            final products = provider.latestByCategory[category.id]!;
+            return [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(category.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 230,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: products.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) => SizedBox(width: 150, child: _ProductCard(product: products[i])),
+                ),
+              ),
+              const SizedBox(height: 24),
+            ];
+          }).toList(),
+        );
+      },
+    );
+  }
+}
+
+/// Real data now - launches the YouTube URL (app if installed, browser
+/// otherwise) on tap. The old "read time" label was always fabricated
+/// placeholder text matching the design mockup, not a real field - a
+/// play-icon overlay replaces it, since these are videos, not articles
+/// with a reading duration.
 class _HealthArticles extends StatelessWidget {
   const _HealthArticles();
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: _ArticleCard(
-            image: AppImages.articleImmunity,
-            title: 'How to boost immunity naturally?',
-            readTime: '5 min read',
+    return Consumer<HealthArticleProvider>(
+      builder: (context, provider, _) {
+        if (provider.articles.isEmpty) return const SizedBox.shrink();
+
+        return SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: provider.articles.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, i) => SizedBox(width: 200, child: _ArticleCard(article: provider.articles[i])),
           ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ArticleCard(
-            image: AppImages.articleHabits,
-            title: '10 simple daily habits for a healthy life',
-            readTime: '4 min read',
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 }
 
 class _ArticleCard extends StatelessWidget {
-  const _ArticleCard({required this.image, required this.title, required this.readTime});
+  const _ArticleCard({required this.article});
 
-  final String image;
-  final String title;
-  final String readTime;
+  final HealthArticle article;
+
+  Future<void> _openVideo(BuildContext context) async {
+    final uri = Uri.parse(article.youtubeUrl);
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Couldn\'t open this video')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No articles/content endpoint exists in the API yet')),
-      ),
+      onTap: () => _openVideo(context),
       child: Container(
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.border),
@@ -559,22 +662,33 @@ class _ArticleCard extends StatelessWidget {
           children: [
             AspectRatio(
               aspectRatio: 1.6,
-              child: Image.asset(image, fit: BoxFit.cover, width: double.infinity),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.network(
+                    article.thumbnailUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stack) => Container(color: AppColors.surfaceTint),
+                  ),
+                  Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.15)),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      child: const Icon(Icons.play_arrow_rounded, color: AppColors.primary, size: 20),
+                    ),
+                  ),
+                ],
+              ),
             ),
             Padding(
               padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.3),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(readTime, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                ],
+              child: Text(
+                article.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.3),
               ),
             ),
           ],

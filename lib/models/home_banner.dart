@@ -2,6 +2,7 @@ class HomeBanner {
   const HomeBanner({
     required this.id,
     required this.imageUrl,
+    this.couponId,
     this.badgeText,
     this.headline,
     this.subtitle,
@@ -10,6 +11,7 @@ class HomeBanner {
 
   final int id;
   final String imageUrl;
+  final int? couponId;
   final String? badgeText;
   final String? headline;
   final String? subtitle;
@@ -19,6 +21,7 @@ class HomeBanner {
     return HomeBanner(
       id: json['id'] as int,
       imageUrl: json['image_url'] as String,
+      couponId: json['coupon_id'] as int?,
       badgeText: json['badge_text'] as String?,
       headline: json['headline'] as String?,
       subtitle: json['subtitle'] as String?,

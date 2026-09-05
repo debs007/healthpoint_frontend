@@ -5,6 +5,7 @@ import '../../core/constants/app_icons.dart';
 import '../../core/constants/app_images.dart';
 import '../../core/widgets/count_badge.dart';
 import '../../core/widgets/error_state.dart';
+import '../../core/widgets/grid_product_card.dart';
 import '../../core/widgets/promo_carousel.dart';
 import '../../models/category.dart';
 import '../../providers/brand_provider.dart';
@@ -12,6 +13,8 @@ import '../../providers/cart_provider.dart';
 import '../../providers/home_banner_provider.dart';
 import '../../providers/product_provider.dart';
 import '../cart/cart_screen.dart';
+import '../coupon/coupon_products_screen.dart';
+import '../product_list/product_list_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
   const CategoriesScreen({super.key});
@@ -91,9 +94,17 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
 
                       return PromoCarousel(
                         banners: bannerProvider.banners,
-                        onButtonPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('No offers/coupons system exists in the API yet')),
-                        ),
+                        onButtonPressed: (banner) {
+                          if (banner.couponId != null) {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => CouponProductsScreen(couponId: banner.couponId!)),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('This banner isn\'t linked to an offer yet')),
+                            );
+                          }
+                        },
                       );
                     },
                   ),
@@ -101,13 +112,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                 const SizedBox(height: 24),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Shop by Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
+                  child: const Text('Shop by Category', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
                 const SizedBox(height: 12),
                 if (categories.isEmpty)
@@ -136,34 +141,6 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       itemBuilder: (context, i) => _CategoryTile(category: categories[i]),
                     ),
                   ),
-                if (categories.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Popular Categories', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                        Text('See All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Same real category data as the grid above, reordered
-                  // into this row layout - not a separate curated/fake
-                  // "popularity" dataset, since there's no popularity
-                  // metric exposed anywhere in the API.
-                  SizedBox(
-                    height: 72,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: categories.length > 4 ? 4 : categories.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 10),
-                      itemBuilder: (context, i) => _PopularCategoryCard(category: categories[i]),
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 24),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -171,12 +148,51 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Top Brands', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-                      Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      InkWell(
+                        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('No dedicated brands page exists yet - see Home for the full catalog')),
+                        ),
+                        child: Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 const _TopBrandsRow(),
+                const SizedBox(height: 24),
+                if (provider.products.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('You May Like', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        InkWell(
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const ProductListScreen()),
+                          ),
+                          child: Text('View All', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: provider.products.length > 10 ? 10 : provider.products.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.68,
+                      ),
+                      itemBuilder: (context, i) => GridProductCard(product: provider.products[i]),
+                    ),
+                  ),
+                ],
               ],
             ),
           );
@@ -227,7 +243,9 @@ class _CategoryTile extends StatelessWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(12),
-      onTap: () {},
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => ProductListScreen(categoryId: category.id, categoryName: category.name)),
+      ),
       child: Column(
         children: [
           Container(
@@ -252,49 +270,6 @@ class _CategoryTile extends StatelessWidget {
           ),
           if (category.productCount != null)
             Text('(${category.productCount}+)', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-        ],
-      ),
-    );
-  }
-}
-
-class _PopularCategoryCard extends StatelessWidget {
-  const _PopularCategoryCard({required this.category});
-
-  final Category category;
-
-  @override
-  Widget build(BuildContext context) {
-    final realAsset = _realAssetFor(category.name);
-
-    return Container(
-      width: 160,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(color: AppColors.surfaceTint, shape: BoxShape.circle),
-            alignment: Alignment.center,
-            child: realAsset != null
-                ? Image.asset(realAsset, width: 22, height: 22)
-                : Icon(_fallbackIconFor(category.name), color: AppColors.primary, size: 16),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(category.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                if (category.productCount != null)
-                  Text('(${category.productCount}+)', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
-              ],
-            ),
-          ),
-          Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 18),
         ],
       ),
     );
@@ -329,33 +304,39 @@ class _TopBrandsRow extends StatelessWidget {
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, i) {
               final brand = brandProvider.brands[i];
-              return SizedBox(
-                width: 72,
-                child: Column(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2))],
+              return InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => ProductListScreen(brandId: brand.id, brandName: brand.name)),
+                ),
+                child: SizedBox(
+                  width: 72,
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 60,
+                        height: 60,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.border),
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 6, offset: const Offset(0, 2))],
+                        ),
+                        child: brand.logoUrl != null
+                            ? ClipOval(child: Image.network(brand.logoUrl!, fit: BoxFit.contain, errorBuilder: (context, error, stack) => _brandInitial(brand.name)))
+                            : _brandInitial(brand.name),
                       ),
-                      child: brand.logoUrl != null
-                          ? ClipOval(child: Image.network(brand.logoUrl!, fit: BoxFit.contain, errorBuilder: (context, error, stack) => _brandInitial(brand.name)))
-                          : _brandInitial(brand.name),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      brand.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
-                    ),
-                  ],
+                      const SizedBox(height: 6),
+                      Text(
+                        brand.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },

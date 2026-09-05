@@ -9,13 +9,15 @@ import '../../models/health_record_item.dart';
 import '../../models/vital.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/health_provider.dart';
+import '../appointments/departments_screen.dart';
+import 'records_list_screen.dart';
+import 'vitals_history_screen.dart';
 
 /// Replaces the old "Coming soon" placeholder now that a real backend
 /// module exists for it - profile, vitals, and records are all real.
-/// Appointments (shown in the original design reference) is deliberately
-/// NOT included - that would need a whole booking/scheduling system this
-/// pass didn't build, not just a display screen, so it's left out rather
-/// than shown as a fake tile that goes nowhere.
+/// Appointments now navigates to the real booking feature too - it used
+/// to show "needs a booking system that hasn't been built yet," which is
+/// no longer true.
 class HealthRecordsScreen extends StatefulWidget {
   const HealthRecordsScreen({super.key});
 
@@ -64,7 +66,13 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
               children: [
                 Text('Manage and track your health information', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 const SizedBox(height: 16),
-                _ProfileCard(name: user?.name ?? '', profile: provider.profile),
+                _ProfileCard(
+                  name: user?.name ?? '',
+                  profileImageUrl: user?.profileImageUrl,
+                  profile: provider.profile,
+                  vitalsCount: provider.vitals.length,
+                  recordsCount: provider.records.length,
+                ),
                 const SizedBox(height: 20),
                 const Text('Quick Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 const SizedBox(height: 10),
@@ -138,10 +146,13 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.name, required this.profile});
+  const _ProfileCard({required this.name, required this.profileImageUrl, required this.profile, required this.vitalsCount, required this.recordsCount});
 
   final String name;
+  final String? profileImageUrl;
   final HealthProfile profile;
+  final int vitalsCount;
+  final int recordsCount;
 
   @override
   Widget build(BuildContext context) {
@@ -151,7 +162,12 @@ class _ProfileCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const CircleAvatar(radius: 26, backgroundColor: Colors.white, child: Icon(Icons.person, color: AppColors.primary, size: 28)),
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: Colors.white,
+            backgroundImage: profileImageUrl != null ? NetworkImage(profileImageUrl!) : null,
+            child: profileImageUrl == null ? const Icon(Icons.person, color: AppColors.primary, size: 28) : null,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -166,6 +182,14 @@ class _ProfileCard extends StatelessWidget {
                   ].join(' • '),
                   style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _StatChip(icon: Icons.favorite_border_rounded, count: vitalsCount, label: vitalsCount == 1 ? 'Vital logged' : 'Vitals logged'),
+                    const SizedBox(width: 10),
+                    _StatChip(icon: Icons.description_outlined, count: recordsCount, label: recordsCount == 1 ? 'Report' : 'Reports'),
+                  ],
+                ),
               ],
             ),
           ),
@@ -178,6 +202,30 @@ class _ProfileCard extends StatelessWidget {
                 if (profile.weightKg != null) Text('${profile.weightKg} kg', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
               ],
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({required this.icon, required this.count, required this.label});
+
+  final IconData icon;
+  final int count;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text('$count $label', style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -201,9 +249,9 @@ class _QuickActionsRow extends StatelessWidget {
         Expanded(
           child: _QuickAction(
             icon: Icons.calendar_today_outlined,
-            label: 'Appointments',
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Appointments needs a booking/scheduling system that hasn\'t been built yet')),
+            label: 'Appointment\nBookings',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const DepartmentsScreen()),
             ),
           ),
         ),
@@ -246,7 +294,12 @@ class _VitalsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const VitalsHistoryScreen()),
+      ),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(14)),
       child: Column(
@@ -275,6 +328,7 @@ class _VitalsCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
       ),
     );
   }
@@ -317,6 +371,9 @@ class _RecordTypeGroup extends StatelessWidget {
     final mostRecent = items.first;
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => RecordsListScreen(type: type, typeLabel: _typeLabels[type] ?? type)),
+      ),
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(color: AppColors.surfaceTint, borderRadius: BorderRadius.circular(8)),

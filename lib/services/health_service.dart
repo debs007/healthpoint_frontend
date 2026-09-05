@@ -40,6 +40,10 @@ class HealthService {
     return data.map((e) => Vital.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  Future<void> deleteVital(int id) async {
+    await _client.delete(ApiEndpoints.vital(id));
+  }
+
   Future<void> recordVitals({
     int? heartRateBpm,
     int? bloodPressureSystolic,
@@ -66,6 +70,13 @@ class HealthService {
     );
     final data = response['data'] as List<dynamic>? ?? [];
     return data.map((e) => HealthRecordItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  /// Only ever called for a real HealthRecord row (never a
+  /// "prescription-{id}" composite entry) - the UI gates this via
+  /// HealthRecordItem.isPrescription before ever offering delete.
+  Future<void> deleteRecord(String id) async {
+    await _client.delete(ApiEndpoints.healthRecord(int.parse(id)));
   }
 
   /// filePath is optional - a checkup or vaccination note might have

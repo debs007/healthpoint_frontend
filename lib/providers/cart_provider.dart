@@ -69,4 +69,22 @@ class CartProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  Future<bool> applyCoupon(String code) async {
+    try {
+      cart = await _cartService.applyCoupon(code);
+      errorMessage = null;
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<void> removeCoupon() async {
+    cart = await _cartService.removeCoupon();
+    notifyListeners();
+  }
 }

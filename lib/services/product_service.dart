@@ -8,12 +8,13 @@ class ProductService {
 
   final ApiClient _client;
 
-  Future<List<Product>> getProducts({String? query, int? categoryId}) async {
+  Future<List<Product>> getProducts({String? query, int? categoryId, int? brandId}) async {
     final response = await _client.get(
       ApiEndpoints.products,
       query: {
         if (query != null && query.isNotEmpty) 'q': query,
         if (categoryId != null) 'category_id': categoryId,
+        if (brandId != null) 'brand_id': brandId,
       },
     );
 
@@ -24,6 +25,18 @@ class ProductService {
   Future<Product> getProduct(int id) async {
     final response = await _client.get(ApiEndpoints.product(id));
     return Product.fromJson(response['data'] as Map<String, dynamic>? ?? response);
+  }
+
+  /// Newest-first, for a category's horizontal row on Home - "try to
+  /// fetch the latest added products" from the request, not just
+  /// whatever the default alphabetical listing happens to return.
+  Future<List<Product>> getLatestByCategory(int categoryId, {int limit = 20}) async {
+    final response = await _client.get(
+      ApiEndpoints.products,
+      query: {'category_id': categoryId, 'sort': 'latest', 'per_page': limit},
+    );
+    final data = response['data'] as List<dynamic>? ?? [];
+    return data.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// Categories aren't behind their own endpoint on the customer side yet

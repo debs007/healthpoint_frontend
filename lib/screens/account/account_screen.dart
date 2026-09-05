@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/constants/app_icons.dart';
 import '../../core/widgets/app_icon.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../providers/wallet_provider.dart';
 import '../address_book/address_book_screen.dart';
 import '../auth/login_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
+import '../wallet/wallet_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -24,6 +27,7 @@ class _AccountScreenState extends State<AccountScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<OrderProvider>();
       if (provider.orders.isEmpty) provider.loadOrders();
+      context.read<WalletProvider>().loadWallet();
     });
   }
 
@@ -102,7 +106,38 @@ class _AccountScreenState extends State<AccountScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _ComingSoonTile(icon: AppIcons.wallet, label: 'Susthayan Wallet')),
+              Expanded(
+                child: InkWell(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const WalletScreen()),
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: AppColors.surfaceTint, borderRadius: BorderRadius.circular(12)),
+                    child: Row(
+                      children: [
+                        AppIcon(AppIcons.wallet, color: AppColors.primary, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Consumer<WalletProvider>(
+                            builder: (context, walletProvider, _) => Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Susthayan Wallet', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text(
+                                  '${AppConstants.currencySymbol}${walletProvider.wallet.balance.toStringAsFixed(2)}',
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(child: _ComingSoonTile(icon: AppIcons.coupon, label: 'My Coupons')),
             ],

@@ -16,7 +16,10 @@ class PromoCarousel extends StatefulWidget {
   });
 
   final List<HomeBanner> banners;
-  final VoidCallback? onButtonPressed;
+  // Passes the specific banner that was tapped - different slides can
+  // link to different coupons (or none), so the caller needs to know
+  // which one to decide what happens.
+  final void Function(HomeBanner banner)? onButtonPressed;
   final double height;
 
   @override
@@ -54,7 +57,7 @@ class _PromoCarouselState extends State<PromoCarousel> {
                 subtitle: banner.subtitle,
                 buttonText: banner.buttonText,
                 height: widget.height,
-                onButtonPressed: widget.onButtonPressed,
+                onButtonPressed: widget.onButtonPressed != null ? () => widget.onButtonPressed!(banner) : null,
               );
             },
           ),

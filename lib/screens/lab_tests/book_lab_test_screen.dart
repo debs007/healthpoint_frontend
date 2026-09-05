@@ -4,13 +4,18 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../models/address.dart';
-import '../../models/franchise.dart';
+import '../../models/lab_center.dart';
 import '../../models/lab_test.dart';
 import '../../providers/address_provider.dart';
-import '../../providers/franchise_provider.dart';
 import '../../providers/lab_test_provider.dart';
 import '../payment/payment_screen.dart';
 
+/// Center selection is always shown here, regardless of the test's visit
+/// type - even for a home-collection test, the customer picks which
+/// center processes their sample (their own preference for which lab to
+/// trust), they just also pick an address alongside it. Only the address
+/// step and the set of qualifying centers differ by visit type - not
+/// whether center selection happens at all.
 class BookLabTestScreen extends StatefulWidget {
   const BookLabTestScreen({super.key, required this.test});
 
@@ -21,25 +26,32 @@ class BookLabTestScreen extends StatefulWidget {
 }
 
 class _BookLabTestScreenState extends State<BookLabTestScreen> {
-  Franchise? _selectedFranchise;
+  List<LabCenter> _centers = [];
+  LabCenter? _selectedCenter;
   Address? _selectedAddress;
   DateTime? _selectedDate;
+  bool _loadingCenters = true;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final franchiseProvider = context.read<FranchiseProvider>();
-      if (franchiseProvider.franchises.isEmpty) franchiseProvider.loadFranchises();
-      if (!widget.test.requiresCenterVisit) {
-        final addressProvider = context.read<AddressProvider>();
-        if (addressProvider.addresses.isEmpty) addressProvider.loadAddresses();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final centers = await context.read<LabTestProvider>().loadCentersFor(widget.test.id);
+      if (!mounted) return;
+      setState(() {
+        _centers = centers;
+        _loadingCenters = false;
+      });
+
+      final addressProvider = context.read<AddressProvider>();
+      if (!widget.test.requiresCenterVisit && addressProvider.addresses.isEmpty) {
+        addressProvider.loadAddresses();
       }
     });
   }
 
   bool get _canSubmit {
-    if (_selectedFranchise == null || _selectedDate == null) return false;
+    if (_selectedCenter == null || _selectedDate == null) return false;
     if (!widget.test.requiresCenterVisit && _selectedAddress == null) return false;
     return true;
   }
@@ -56,12 +68,53 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
+  Future<void> _pickCenter() async {
+    final selected = await showModalBottomSheet<LabCenter>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => _centers.isEmpty
+            ? const Center(child: Text('No centers currently offer this test.'))
+            : ListView.separated(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                itemCount: _centers.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, i) {
+                  if (i == 0) {
+                    return const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text('Select a center', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    );
+                  }
+                  final center = _centers[i - 1];
+                  return ListTile(
+                    tileColor: AppColors.surface,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: const BorderSide(color: AppColors.border)),
+                    leading: Icon(Icons.local_hospital_outlined, color: AppColors.primary),
+                    title: Text(center.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(center.fullAddress, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    trailing: center.price != null
+                        ? Text('${AppConstants.currencySymbol}${center.price!.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))
+                        : null,
+                    onTap: () => Navigator.pop(context, center),
+                  );
+                },
+              ),
+      ),
+    );
+    if (selected != null) setState(() => _selectedCenter = selected);
+  }
+
   Future<void> _submit() async {
     if (!_canSubmit) return;
 
     final order = await context.read<LabTestProvider>().book(
           labTestId: widget.test.id,
-          franchiseId: _selectedFranchise!.id,
+          labCenterId: _selectedCenter!.id,
           scheduledDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
           addressId: _selectedAddress?.id,
         );
@@ -81,6 +134,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
   @override
   Widget build(BuildContext context) {
     final test = widget.test;
+    final price = _selectedCenter?.price ?? test.price;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Book Test')),
@@ -96,9 +150,11 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
                 Text(test.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(
-                  '${AppConstants.currencySymbol}${test.price.toStringAsFixed(2)}',
+                  '${AppConstants.currencySymbol}${price.toStringAsFixed(2)}',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
                 ),
+                if (_selectedCenter != null)
+                  Text('at ${_selectedCenter!.name}', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                 if (test.preparationInstructions != null) ...[
                   const SizedBox(height: 8),
                   Text('Before your test: ${test.preparationInstructions}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
@@ -108,34 +164,39 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            test.requiresCenterVisit ? 'This test requires a center visit' : 'A technician will visit your home',
+            test.requiresCenterVisit ? 'This test requires a center visit' : 'A technician will visit your home - choose which center processes your sample',
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const SizedBox(height: 12),
 
-          const Text('Store', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          const Text('Center', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Consumer<FranchiseProvider>(
-            builder: (context, provider, _) {
-              if (provider.isLoading) return const LinearProgressIndicator();
-              return _SelectTile(
-                label: _selectedFranchise?.name ?? 'Select a store',
-                icon: Icons.storefront_outlined,
-                onTap: () async {
-                  final selected = await showModalBottomSheet<Franchise>(
-                    context: context,
-                    builder: (context) => ListView(
-                      shrinkWrap: true,
-                      children: provider.franchises
-                          .map((f) => ListTile(title: Text(f.name), subtitle: Text(f.locationLabel), onTap: () => Navigator.pop(context, f)))
-                          .toList(),
+          _loadingCenters
+              ? const LinearProgressIndicator()
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _SelectTile(
+                      label: _selectedCenter?.name ?? 'Select a center',
+                      icon: Icons.local_hospital_outlined,
+                      onTap: _pickCenter,
                     ),
-                  );
-                  if (selected != null) setState(() => _selectedFranchise = selected);
-                },
-              );
-            },
-          ),
+                    if (_selectedCenter != null) ...[
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.location_on_outlined, size: 14, color: AppColors.textMuted),
+                            const SizedBox(width: 4),
+                            Expanded(child: Text(_selectedCenter!.fullAddress, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
           const SizedBox(height: 16),
 
           const Text('Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
@@ -148,13 +209,13 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
 
           if (!test.requiresCenterVisit) ...[
             const SizedBox(height: 16),
-            const Text('Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            const Text('Collection Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             Consumer<AddressProvider>(
               builder: (context, provider, _) {
                 return _SelectTile(
                   label: _selectedAddress?.shortLabel ?? 'Select an address',
-                  icon: Icons.location_on_outlined,
+                  icon: Icons.home_outlined,
                   onTap: () async {
                     final selected = await showModalBottomSheet<Address>(
                       context: context,
@@ -180,7 +241,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
                 onPressed: (_canSubmit && !provider.isBooking) ? _submit : null,
                 child: provider.isBooking
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text('Proceed to Pay ${AppConstants.currencySymbol}${test.price.toStringAsFixed(2)}'),
+                    : Text('Proceed to Pay ${AppConstants.currencySymbol}${price.toStringAsFixed(2)}'),
               ),
             ),
           ),

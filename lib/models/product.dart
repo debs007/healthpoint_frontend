@@ -15,6 +15,7 @@ class Product {
     this.availableStock,
     this.categoryId,
     this.categoryName,
+    this.couponPrice,
   });
 
   final int id;
@@ -32,6 +33,9 @@ class Product {
   final int? availableStock;
   final int? categoryId;
   final String? categoryName;
+  // Only ever populated when this Product came from the coupon products
+  // endpoint (GET /coupons/{id}/products) - null everywhere else.
+  final double? couponPrice;
 
   bool get inStock => (availableStock ?? 0) > 0;
 
@@ -49,7 +53,14 @@ class Product {
     // wrong in this model before - genuinely never caught, since nothing
     // in this build has run against live backend data until now.
     final price = json['price'] as Map<String, dynamic>?;
-    final categoryJson = json['category'] as Map<String, dynamic>?;
+    // category is a plain string (the name only) whenever the backend's
+    // whenLoaded('category', ...) actually has a category to report -
+    // never a nested {id, name} object. Casting it straight to a Map
+    // threw immediately for any product with a category attached, which
+    // silently crashed every product fetch (an uncaught exception in an
+    // async callback doesn't show an error - it just leaves the provider
+    // stuck in its empty starting state).
+    final categoryName = json['category'] is String ? json['category'] as String : null;
 
     return Product(
       id: json['id'] as int,
@@ -65,8 +76,9 @@ class Product {
       mrp: price != null ? double.tryParse(price['mrp'].toString()) : null,
       sellingPrice: price != null ? double.tryParse(price['selling_price'].toString()) : null,
       availableStock: json['available_stock'] as int?,
-      categoryId: categoryJson?['id'] as int? ?? json['category_id'] as int?,
-      categoryName: categoryJson?['name'] as String? ?? (json['category'] is String ? json['category'] as String : null),
+      categoryId: json['category_id'] as int?,
+      categoryName: categoryName,
+      couponPrice: json['coupon_price'] != null ? double.tryParse(json['coupon_price'].toString()) : null,
     );
   }
 }

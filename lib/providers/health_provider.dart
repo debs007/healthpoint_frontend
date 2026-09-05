@@ -94,6 +94,19 @@ class HealthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> deleteVital(int id) async {
+    try {
+      await _healthService.deleteVital(id);
+      vitals = await _healthService.getVitals();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> uploadRecord({
     required String type,
     required String title,
@@ -120,6 +133,19 @@ class HealthProvider extends ChangeNotifier {
     } finally {
       isSubmitting = false;
       notifyListeners();
+    }
+  }
+
+  Future<bool> deleteRecord(String id) async {
+    try {
+      await _healthService.deleteRecord(id);
+      records = await _healthService.getRecords();
+      notifyListeners();
+      return true;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+      notifyListeners();
+      return false;
     }
   }
 }

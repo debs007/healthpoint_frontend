@@ -104,9 +104,11 @@ class _OrderDetailBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        const Text('Items', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        Text(order.orderType == 'lab_test' ? 'Test Booked' : 'Items', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
         const SizedBox(height: 10),
-        if (order.items.isEmpty)
+        if (order.orderType == 'lab_test' && order.labTestBooking != null)
+          _LabTestBookingCard(booking: order.labTestBooking!)
+        else if (order.items.isEmpty)
           Text('No item details available.', style: TextStyle(color: AppColors.textMuted))
         else
           Container(
@@ -158,6 +160,60 @@ class _OrderDetailBody extends StatelessWidget {
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ],
+      ],
+    );
+  }
+}
+
+class _LabTestBookingCard extends StatelessWidget {
+  const _LabTestBookingCard({required this.booking});
+
+  final LabTestBookingInfo booking;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(booking.testName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          _DetailLine(
+            icon: booking.bookingType == 'center_visit' ? Icons.storefront_outlined : Icons.home_outlined,
+            label: booking.bookingType == 'center_visit' ? 'Center visit' : 'Home collection',
+          ),
+          if (booking.centerName != null) ...[
+            const SizedBox(height: 6),
+            _DetailLine(icon: Icons.local_hospital_outlined, label: booking.centerName!),
+          ],
+          if (booking.centerAddress != null) ...[
+            const SizedBox(height: 6),
+            _DetailLine(icon: Icons.location_on_outlined, label: booking.centerAddress!),
+          ],
+          const SizedBox(height: 6),
+          _DetailLine(icon: Icons.calendar_today_outlined, label: DateFormat('EEE, dd MMM yyyy').format(booking.scheduledDate)),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  const _DetailLine({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 15, color: AppColors.textMuted),
+        const SizedBox(width: 8),
+        Expanded(child: Text(label, style: const TextStyle(fontSize: 12.5))),
       ],
     );
   }

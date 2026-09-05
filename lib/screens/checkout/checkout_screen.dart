@@ -10,6 +10,12 @@ import '../../providers/order_provider.dart';
 import '../address_book/address_book_screen.dart';
 import '../payment/payment_screen.dart';
 
+/// Delivery-only, deliberately - this app is built for a single-location
+/// consumer business, not a multi-fulfillment marketplace. There's no
+/// "pickup at the store" option here since that's not how this business
+/// operates; every order gets delivered to an address. If a pickup option
+/// is ever genuinely needed later, that's a real feature to design, not
+/// something quietly disabled here.
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key});
 
@@ -18,7 +24,6 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  String _fulfillmentType = 'delivery';
   Address? _selectedAddress;
   bool _placingOrder = false;
 
@@ -43,24 +48,19 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _placeOrder() async {
     final cart = context.read<CartProvider>();
 
-    // The cart's franchise comes from the server (set via cart/select-
-    // franchise, which the browsing flow calls when adding items) - there's
-    // no franchise-picker screen in this app, so if it's genuinely missing
-    // here, that's a real, honest gap to surface rather than guess at.
+    // The cart's franchise comes from the server - either auto-selected
+    // when there's a single active store, or picked by the customer on
+    // the Cart screen when there's more than one. If it's genuinely
+    // missing here, that's a real, honest gap to surface rather than
+    // guess at.
     if (cart.cart.franchiseId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No franchise is associated with this cart yet - there\'s no franchise-picker screen built. '
-            'This needs resolving on the browsing side before checkout can work.',
-          ),
-          duration: Duration(seconds: 5),
-        ),
+        const SnackBar(content: Text('No store is associated with this cart yet - go back to your cart to select one.')),
       );
       return;
     }
 
-    if (_fulfillmentType == 'delivery' && _selectedAddress == null) {
+    if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a delivery address first')),
       );
@@ -72,8 +72,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     try {
       final order = await context.read<OrderProvider>().placeOrder(
             franchiseId: cart.cart.franchiseId!,
-            fulfillmentType: _fulfillmentType,
-            addressId: _fulfillmentType == 'delivery' ? _selectedAddress!.id : null,
+            fulfillmentType: 'delivery',
+            addressId: _selectedAddress!.id,
           );
 
       if (!mounted) return;
@@ -99,90 +99,64 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text('Fulfillment', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-          const SizedBox(height: 10),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: _FulfillmentOption(
-                  label: 'Delivery',
-                  icon: Icons.local_shipping_outlined,
-                  selected: _fulfillmentType == 'delivery',
-                  onTap: () => setState(() => _fulfillmentType = 'delivery'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _FulfillmentOption(
-                  label: 'Pickup',
-                  icon: Icons.storefront_outlined,
-                  selected: _fulfillmentType == 'pickup',
-                  onTap: () => setState(() => _fulfillmentType = 'pickup'),
-                ),
+              const Text('Deliver to', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+              TextButton(
+                onPressed: () async {
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddressBookScreen()));
+                  if (mounted) context.read<AddressProvider>().loadAddresses();
+                },
+                child: const Text('Manage'),
               ),
             ],
           ),
-          if (_fulfillmentType == 'delivery') ...[
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Deliver to', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                TextButton(
-                  onPressed: () async {
-                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AddressBookScreen()));
-                    if (mounted) context.read<AddressProvider>().loadAddresses();
-                  },
-                  child: const Text('Manage'),
-                ),
-              ],
-            ),
-            Consumer<AddressProvider>(
-              builder: (context, provider, _) {
-                if (provider.addresses.isEmpty) {
-                  return Text('No saved addresses - add one to deliver here.', style: TextStyle(color: AppColors.textMuted));
-                }
-                return Column(
-                  children: provider.addresses.map((address) {
-                    final selected = _selectedAddress?.id == address.id;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: InkWell(
-                        onTap: () => setState(() => _selectedAddress = address),
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              Radio<int>(
-                                value: address.id,
-                                groupValue: _selectedAddress?.id,
-                                onChanged: (_) => setState(() => _selectedAddress = address),
-                                activeColor: AppColors.primary,
+          Consumer<AddressProvider>(
+            builder: (context, provider, _) {
+              if (provider.addresses.isEmpty) {
+                return Text('No saved addresses - add one to deliver here.', style: TextStyle(color: AppColors.textMuted));
+              }
+              return Column(
+                children: provider.addresses.map((address) {
+                  final selected = _selectedAddress?.id == address.id;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () => setState(() => _selectedAddress = address),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Radio<int>(
+                              value: address.id,
+                              groupValue: _selectedAddress?.id,
+                              onChanged: (_) => setState(() => _selectedAddress = address),
+                              activeColor: AppColors.primary,
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(address.label ?? 'Address', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                                  Text('${address.line1}, ${address.shortLabel}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                ],
                               ),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(address.label ?? 'Address', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                    Text('${address.line1}, ${address.shortLabel}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ],
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
           const SizedBox(height: 24),
           const Text('Order Summary', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
           const SizedBox(height: 10),
@@ -228,38 +202,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Text('Place Order'),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FulfillmentOption extends StatelessWidget {
-  const _FulfillmentOption({required this.label, required this.icon, required this.selected, required this.onTap});
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.surfaceTint : null,
-          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: selected ? AppColors.primary : AppColors.textMuted),
-            const SizedBox(height: 6),
-            Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: selected ? AppColors.primary : AppColors.textPrimary)),
-          ],
         ),
       ),
     );

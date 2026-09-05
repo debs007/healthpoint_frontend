@@ -18,13 +18,33 @@ class ApiEndpoints {
   // --- Health Records ---
   static const String healthProfile = '/customer/health/profile';
   static const String vitals = '/customer/health/vitals';
+  static String vital(int id) => '/customer/health/vitals/$id';
   static const String healthRecords = '/customer/health/records';
+  static String healthRecord(int id) => '/customer/health/records/$id';
   static String healthRecordFile(String id) => '/customer/health/records/$id/file';
 
   // --- Lab Tests ---
   static const String labTests = '/customer/lab-tests';
   static const String labTestBlockedDates = '/customer/lab-tests/blocked-dates';
+  static String labTestCenters(int labTestId) => '/customer/lab-tests/$labTestId/centers';
   static const String labTestBookings = '/customer/lab-test-bookings';
+
+  // --- Wallet ---
+  static const String wallet = '/customer/wallet';
+  static const String walletTopup = '/customer/wallet/topup';
+
+  // --- Appointments ---
+  static const String departments = '/customer/departments';
+  static const String doctors = '/customer/doctors';
+  static String doctor(int id) => '/customer/doctors/$id';
+  static const String appointmentBookings = '/customer/appointment-bookings';
+
+  // --- Health Articles ---
+  static const String healthArticles = '/customer/health-articles';
+
+  // --- Coupons ---
+  static const String coupons = '/customer/coupons';
+  static String couponProducts(int couponId) => '/customer/coupons/$couponId/products';
 
   // --- Home Banners ---
   static const String homeBanners = '/customer/home-banners';
@@ -46,6 +66,8 @@ class ApiEndpoints {
   // --- Cart ---
   static const String cart = '/customer/cart';
   static const String cartSelectFranchise = '/customer/cart/select-franchise';
+  static const String cartApplyCoupon = '/customer/cart/apply-coupon';
+  static const String cartRemoveCoupon = '/customer/cart/remove-coupon';
   static const String cartItems = '/customer/cart/items';
   static String cartItem(int id) => '/customer/cart/items/$id';
 
