@@ -1,5 +1,6 @@
 import '../core/network/api_client.dart';
 import '../core/network/api_endpoints.dart';
+import '../models/appointment_booking.dart';
 import '../models/department.dart';
 import '../models/doctor.dart';
 import '../models/order.dart';
@@ -27,6 +28,12 @@ class AppointmentService {
   Future<Doctor> getDoctor(int id) async {
     final response = await _client.get(ApiEndpoints.doctor(id));
     return Doctor.fromJson(response['data'] as Map<String, dynamic>? ?? response);
+  }
+
+  Future<List<AppointmentBooking>> getMyBookings() async {
+    final response = await _client.get(ApiEndpoints.appointmentBookings);
+    final data = response['data'] as List<dynamic>? ?? [];
+    return data.map((e) => AppointmentBooking.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   /// Returns a real Order - the caller hands this straight to the

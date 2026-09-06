@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/network/api_exception.dart';
+import '../models/appointment_booking.dart';
 import '../models/department.dart';
 import '../models/doctor.dart';
 import '../models/order.dart';
@@ -12,7 +13,9 @@ class AppointmentProvider extends ChangeNotifier {
 
   List<Department> departments = [];
   List<Doctor> doctors = [];
+  List<AppointmentBooking> myBookings = [];
   bool isLoading = false;
+  bool isLoadingBookings = false;
   bool isBooking = false;
   String? errorMessage;
 
@@ -49,6 +52,21 @@ class AppointmentProvider extends ChangeNotifier {
       errorMessage = e.message;
       notifyListeners();
       return null;
+    }
+  }
+
+  Future<void> loadMyBookings() async {
+    isLoadingBookings = true;
+    notifyListeners();
+
+    try {
+      myBookings = await _service.getMyBookings();
+      errorMessage = null;
+    } on ApiException catch (e) {
+      errorMessage = e.message;
+    } finally {
+      isLoadingBookings = false;
+      notifyListeners();
     }
   }
 

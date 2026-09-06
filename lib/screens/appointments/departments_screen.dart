@@ -5,6 +5,7 @@ import '../../core/widgets/error_state.dart';
 import '../../models/department.dart';
 import '../../providers/appointment_provider.dart';
 import 'doctors_screen.dart';
+import 'my_appointments_screen.dart';
 
 /// Entry point for the whole Appointments feature - department first,
 /// then doctors within it. "All Doctors" is always available too, for
@@ -39,7 +40,18 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Book an Appointment')),
+      appBar: AppBar(
+        title: const Text('Book an Appointment'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.event_note_outlined),
+            tooltip: 'My Appointments',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MyAppointmentsScreen()),
+            ),
+          ),
+        ],
+      ),
       body: Consumer<AppointmentProvider>(
         builder: (context, provider, _) {
           if (provider.departments.isEmpty && provider.errorMessage != null) {
