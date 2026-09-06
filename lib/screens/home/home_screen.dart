@@ -181,7 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       // catalog. A genuine "order again" would need to
                       // derive this from OrderProvider's real order
                       // history, which isn't wired up yet.
-                      const Text('Order Again', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const Text('Quick Views', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       InkWell(
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const ProductListScreen()),

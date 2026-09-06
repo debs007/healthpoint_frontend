@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../../models/home_banner.dart';
@@ -27,11 +28,46 @@ class PromoCarousel extends StatefulWidget {
 }
 
 class _PromoCarouselState extends State<PromoCarousel> {
-  final _controller = PageController();
-  int _page = 0;
+  // Starts deep into a large virtual page range, not page 0 - combined
+  // with unbounded itemCount and modulo indexing below, this makes the
+  // carousel loop continuously in one direction forever. There's no
+  // real "last page" to hit and jump back from, which is what would
+  // otherwise make an auto-scrolling loop look jarring.
+  static const _initialPage = 10000;
+  late final _controller = PageController(initialPage: _initialPage);
+  int _page = _initialPage;
+  Timer? _autoScrollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _maybeStartAutoScroll();
+  }
+
+  @override
+  void didUpdateWidget(PromoCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Home/Categories load banners asynchronously via a provider, so
+    // this widget commonly starts with an empty list and gets banners a
+    // moment later through a rebuild of this same widget - not a fresh
+    // one, so initState() alone would miss that transition entirely.
+    if (oldWidget.banners.length != widget.banners.length) {
+      _autoScrollTimer?.cancel();
+      _maybeStartAutoScroll();
+    }
+  }
+
+  void _maybeStartAutoScroll() {
+    if (widget.banners.length <= 1) return; // nothing to scroll to
+    _autoScrollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted) return;
+      _controller.nextPage(duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
+    });
+  }
 
   @override
   void dispose() {
+    _autoScrollTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -40,16 +76,21 @@ class _PromoCarouselState extends State<PromoCarousel> {
   Widget build(BuildContext context) {
     if (widget.banners.isEmpty) return const SizedBox.shrink();
 
+    final activeDot = ((_page % widget.banners.length) + widget.banners.length) % widget.banners.length;
+
     return Column(
       children: [
         SizedBox(
           height: widget.height,
           child: PageView.builder(
             controller: _controller,
-            itemCount: widget.banners.length,
+            // null = unbounded in both directions - a real, continuous
+            // infinite scroll, not a fixed range with an eventual edge.
+            itemCount: null,
             onPageChanged: (i) => setState(() => _page = i),
             itemBuilder: (context, i) {
-              final banner = widget.banners[i];
+              final index = ((i % widget.banners.length) + widget.banners.length) % widget.banners.length;
+              final banner = widget.banners[index];
               return PromoBanner(
                 image: banner.imageUrl,
                 badgeText: banner.badgeText,
@@ -71,10 +112,10 @@ class _PromoCarouselState extends State<PromoCarousel> {
               (i) => AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 margin: const EdgeInsets.symmetric(horizontal: 3),
-                width: i == _page ? 18 : 6,
+                width: i == activeDot ? 18 : 6,
                 height: 6,
                 decoration: BoxDecoration(
-                  color: i == _page ? AppColors.primary : AppColors.border,
+                  color: i == activeDot ? AppColors.primary : AppColors.border,
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),

@@ -12,6 +12,7 @@ import 'providers/coupon_provider.dart';
 import 'providers/franchise_provider.dart';
 import 'providers/health_article_provider.dart';
 import 'providers/health_provider.dart';
+import 'providers/medicine_reminder_provider.dart';
 import 'providers/home_banner_provider.dart';
 import 'providers/lab_test_provider.dart';
 import 'providers/notification_provider.dart';
@@ -29,6 +30,7 @@ import 'services/coupon_service.dart';
 import 'services/franchise_service.dart';
 import 'services/health_article_service.dart';
 import 'services/health_service.dart';
+import 'services/medicine_reminder_service.dart';
 import 'services/home_banner_service.dart';
 import 'services/lab_test_service.dart';
 import 'services/notification_service.dart';
@@ -75,6 +77,7 @@ class SusthayanApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PrescriptionProvider(PrescriptionService(apiClient))),
         ChangeNotifierProvider(create: (_) => FranchiseProvider(FranchiseService(apiClient))),
         ChangeNotifierProvider(create: (_) => HealthProvider(HealthService(apiClient))),
+        ChangeNotifierProvider(create: (_) => MedicineReminderProvider(MedicineReminderService(apiClient))),
         ChangeNotifierProvider(create: (_) => HealthArticleProvider(HealthArticleService(apiClient))),
         ChangeNotifierProvider(create: (_) => HomeBannerProvider(HomeBannerService(apiClient))),
         ChangeNotifierProvider(create: (_) => LabTestProvider(LabTestService(apiClient))),

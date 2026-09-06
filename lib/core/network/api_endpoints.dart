@@ -29,6 +29,10 @@ class ApiEndpoints {
   static String labTestCenters(int labTestId) => '/customer/lab-tests/$labTestId/centers';
   static const String labTestBookings = '/customer/lab-test-bookings';
 
+  // --- Medicine Reminders ---
+  static const String medicineReminders = '/customer/medicine-reminders';
+  static String medicineReminder(int id) => '/customer/medicine-reminders/$id';
+
   // --- Wallet ---
   static const String wallet = '/customer/wallet';
   static const String walletTopup = '/customer/wallet/topup';

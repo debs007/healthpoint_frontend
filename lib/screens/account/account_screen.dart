@@ -10,6 +10,7 @@ import '../../providers/wallet_provider.dart';
 import '../address_book/address_book_screen.dart';
 import '../auth/login_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
+import '../medicine_reminders/medicine_reminders_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
 import '../wallet/wallet_screen.dart';
 
@@ -173,7 +174,13 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
           _ComingSoonMenuTile(icon: AppIcons.paymentMethods, label: 'Payment Methods'),
-          _ComingSoonMenuTile(icon: AppIcons.reminders, label: 'Medicine Reminders'),
+          _MenuTile(
+            icon: AppIcons.reminders,
+            label: 'Medicine Reminders',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const MedicineRemindersScreen()),
+            ),
+          ),
           _ComingSoonMenuTile(icon: AppIcons.reviews, label: 'My Reviews'),
           _ComingSoonMenuTile(icon: AppIcons.referEarn, label: 'Refer & Earn'),
           _MenuTile(
