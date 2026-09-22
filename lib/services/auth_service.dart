@@ -13,8 +13,9 @@ class AuthService {
   }
 
   /// Verifies the OTP and persists the returned token - callers don't
-  /// need to separately save it.
-  Future<User> verifyOtp(String mobile, String code) async {
+  /// need to separately save it. Returns is_new_user alongside the user
+  /// so the caller can decide whether to show the complete-profile step.
+  Future<(User, bool)> verifyOtp(String mobile, String code) async {
     final response = await _client.post(
       ApiEndpoints.otpVerify,
       data: {'mobile': mobile, 'code': code},
@@ -23,11 +24,12 @@ class AuthService {
     final token = response['token'] as String;
     final userJson = response['user'] as Map<String, dynamic>;
     final user = User.fromJson(userJson);
+    final isNewUser = response['is_new_user'] as bool? ?? false;
 
     await SecureStorageService.saveToken(token);
     await SecureStorageService.saveUserId(user.id);
 
-    return user;
+    return (user, isNewUser);
   }
 
   Future<User> getCurrentUser() async {
@@ -43,11 +45,15 @@ class AuthService {
     String? email,
     String? alternateMobile,
     String? imagePath,
+    String? dob,
+    String? gender,
   }) async {
     final fields = {
       if (name != null) 'name': name,
       if (email != null) 'email': email,
       if (alternateMobile != null) 'alternate_mobile': alternateMobile,
+      if (dob != null) 'dob': dob,
+      if (gender != null) 'gender': gender,
     };
 
     final response = imagePath != null

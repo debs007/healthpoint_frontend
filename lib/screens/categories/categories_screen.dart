@@ -14,6 +14,7 @@ import '../../providers/home_banner_provider.dart';
 import '../../providers/product_provider.dart';
 import '../cart/cart_screen.dart';
 import '../coupon/coupon_products_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../product_list/product_list_screen.dart';
 
 class CategoriesScreen extends StatefulWidget {
@@ -44,8 +45,10 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
         title: const Text('Categories'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {},
+            icon: const Icon(Icons.notifications_none_rounded),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            ),
           ),
           Consumer<CartProvider>(
             builder: (context, cart, _) => Stack(
@@ -134,14 +137,14 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
                       itemCount: categories.length,
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 4,
-                        mainAxisSpacing: 16,
+                        mainAxisSpacing: 12,
                         crossAxisSpacing: 8,
-                        childAspectRatio: 0.72,
+                        childAspectRatio: 0.92,
                       ),
                       itemBuilder: (context, i) => _CategoryTile(category: categories[i]),
                     ),
                   ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 10),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(

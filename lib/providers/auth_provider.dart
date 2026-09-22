@@ -16,6 +16,7 @@ class AuthProvider extends ChangeNotifier {
   String? pendingMobile; // set once OTP is requested, used on the verify screen
   bool isLoading = false;
   String? errorMessage;
+  bool isNewUser = false; // set by verifyOtp() - the OTP screen reads this to decide whether to show the complete-profile step
 
   /// Called once at app startup - checks for a saved token and, if
   /// present, confirms it's still valid against the server rather than
@@ -68,7 +69,9 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      currentUser = await _authService.verifyOtp(pendingMobile!, code);
+      final (user, newUser) = await _authService.verifyOtp(pendingMobile!, code);
+      currentUser = user;
+      isNewUser = newUser;
       status = AuthStatus.authenticated;
       pendingMobile = null;
       return true;
@@ -95,6 +98,8 @@ class AuthProvider extends ChangeNotifier {
     String? email,
     String? alternateMobile,
     String? imagePath,
+    String? dob,
+    String? gender,
   }) async {
     isLoading = true;
     errorMessage = null;
@@ -106,7 +111,10 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         alternateMobile: alternateMobile,
         imagePath: imagePath,
+        dob: dob,
+        gender: gender,
       );
+      isNewUser = false; // profile is now complete - the OTP screen's redirect logic shouldn't fire again
       return true;
     } on ApiException catch (e) {
       errorMessage = e.message;

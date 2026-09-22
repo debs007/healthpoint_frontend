@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -181,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       // catalog. A genuine "order again" would need to
                       // derive this from OrderProvider's real order
                       // history, which isn't wired up yet.
-                      const Text('Quick Views', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const Text('Order Again', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       InkWell(
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const ProductListScreen()),
@@ -260,31 +262,111 @@ class _SearchBarState extends State<_SearchBar> {
           AppIcon(AppIcons.search, color: AppColors.textMuted, size: 20),
           const SizedBox(width: 10),
           Expanded(
-            child: TextField(
-              controller: _controller,
-              textInputAction: TextInputAction.search,
-              onSubmitted: _submit,
-              decoration: InputDecoration(
-                filled: false,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                if (_controller.text.isEmpty) const _AnimatedSearchHint(),
+                TextField(
+                  controller: _controller,
+                  textInputAction: TextInputAction.search,
+                  onSubmitted: _submit,
+                  onChanged: (_) => setState(() {}), // toggles the animated hint's visibility as the field empties/fills
+                  decoration: InputDecoration(
+                    filled: false,
 
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                disabledBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
 
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
-                hintText: 'Search for medicines, health products...',
-                hintStyle: TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 14,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Cycles through a list of search suggestions with a slide-up-and-fade
+/// transition between each one - shown only while the search field is
+/// empty (the parent Stack handles that), so it never competes with
+/// what the customer is actually typing.
+class _AnimatedSearchHint extends StatefulWidget {
+  const _AnimatedSearchHint();
+
+  @override
+  State<_AnimatedSearchHint> createState() => _AnimatedSearchHintState();
+}
+
+class _AnimatedSearchHintState extends State<_AnimatedSearchHint> {
+  static const _keywords = [
+    'Search for medicines',
+    'Search for health products',
+    'Search for mother & baby products',
+    'Search for fitness supplements',
+    'Search for vitamins & supplements',
+    'Search for skin care products',
+    'Search for ayurvedic medicines',
+    'Search for diabetic care essentials',
+    'Search for personal care items',
+    'Search for baby diapers & wipes',
+    'Search for protein powders',
+    'Search for first aid essentials',
+  ];
+
+  int _index = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 2, milliseconds: 500), (_) {
+      if (!mounted) return;
+      setState(() => _index = (_index + 1) % _keywords.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      // Purely decorative - taps must still reach the TextField
+      // underneath it in the Stack, not this overlay.
+      child: ClipRect(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          transitionBuilder: (child, animation) {
+            final slideIn = Tween<Offset>(begin: const Offset(0, 0.6), end: Offset.zero).animate(animation);
+            final slideOut = Tween<Offset>(begin: Offset.zero, end: const Offset(0, -0.6)).animate(animation);
+            // The entering keyword slides up into place while fading in;
+            // the exiting one continues sliding up and out while fading
+            // away - together this reads as one continuous upward swipe,
+            // not two separate, disconnected animations.
+            return ClipRect(
+              child: SlideTransition(
+                position: child.key == ValueKey(_index) ? slideIn : slideOut,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+            );
+          },
+          child: Text(
+            _keywords[_index],
+            key: ValueKey(_index),
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+          ),
+        ),
       ),
     );
   }

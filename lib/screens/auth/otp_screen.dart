@@ -5,6 +5,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../main_shell.dart';
+import 'complete_profile_screen.dart';
 
 class OtpScreen extends StatefulWidget {
   const OtpScreen({super.key});
@@ -53,7 +54,7 @@ class _OtpScreenState extends State<OtpScreen> {
 
     if (success) {
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainShell()),
+        MaterialPageRoute(builder: (_) => auth.isNewUser ? const CompleteProfileScreen() : const MainShell()),
         (route) => false,
       );
     } else if (auth.errorMessage != null) {

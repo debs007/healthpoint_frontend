@@ -8,6 +8,7 @@ import '../../providers/address_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
 import '../address_book/address_book_screen.dart';
+import '../order_confirmation/order_confirmation_screen.dart';
 import '../payment/payment_screen.dart';
 
 /// Delivery-only, deliberately - this app is built for a single-location
@@ -46,20 +47,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Future<void> _placeOrder() async {
-    final cart = context.read<CartProvider>();
-
-    // The cart's franchise comes from the server - either auto-selected
-    // when there's a single active store, or picked by the customer on
-    // the Cart screen when there's more than one. If it's genuinely
-    // missing here, that's a real, honest gap to surface rather than
-    // guess at.
-    if (cart.cart.franchiseId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No store is associated with this cart yet - go back to your cart to select one.')),
-      );
-      return;
-    }
-
     if (_selectedAddress == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Select a delivery address first')),
@@ -71,16 +58,26 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final order = await context.read<OrderProvider>().placeOrder(
-            franchiseId: cart.cart.franchiseId!,
             fulfillmentType: 'delivery',
             addressId: _selectedAddress!.id,
           );
 
       if (!mounted) return;
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => PaymentScreen(order: order)),
-      );
+      // Payment is currently off - the backend already confirms the order
+      // directly during placement in that case, so there's nothing for a
+      // payment screen to do. Only open it when the order actually still
+      // needs payment.
+      if (order.status == 'pending_payment') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => PaymentScreen(order: order)),
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => OrderConfirmationScreen(order: order)),
+          (route) => false,
+        );
+      }
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));

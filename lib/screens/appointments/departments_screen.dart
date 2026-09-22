@@ -89,6 +89,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
                 itemBuilder: (context, i) => _DepartmentCard(
                   department: provider.departments[i],
                   icon: _icons[i % _icons.length],
+                  index: i,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => DoctorsScreen(department: provider.departments[i])),
                   ),
@@ -141,30 +142,48 @@ class _AllDoctorsCard extends StatelessWidget {
 }
 
 class _DepartmentCard extends StatelessWidget {
-  const _DepartmentCard({required this.department, required this.icon, required this.onTap});
+  const _DepartmentCard({required this.department, required this.icon, required this.index, required this.onTap});
 
   final Department department;
   final IconData icon;
+  final int index;
   final VoidCallback onTap;
+
+  // Curated pairs, not randomly generated - keeps every tile looking
+  // intentional and legible (icon/text is always white on top of
+  // these) rather than risking a jarring or low-contrast combination.
+  static const _gradients = [
+    [Color(0xFF11998E), Color(0xFF38EF7D)],
+    [Color(0xFF667EEA), Color(0xFF764BA2)],
+    [Color(0xFFF857A6), Color(0xFFFF5858)],
+    [Color(0xFF2193B0), Color(0xFF6DD5ED)],
+    [Color(0xFFCC2B5E), Color(0xFF753A88)],
+    [Color(0xFF56AB2F), Color(0xFFA8E063)],
+    [Color(0xFFF2994A), Color(0xFFF2C94C)],
+    [Color(0xFF4B6CB7), Color(0xFF182848)],
+  ];
 
   @override
   Widget build(BuildContext context) {
+    final gradient = _gradients[index % _gradients.length];
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.surfaceTint,
+          gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
           borderRadius: BorderRadius.circular(14),
+          boxShadow: [BoxShadow(color: gradient.first.withValues(alpha: 0.25), blurRadius: 8, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.primary, size: 26),
+            Icon(icon, color: Colors.white, size: 26),
             const SizedBox(height: 8),
-            Text(department.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+            Text(department.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5, color: Colors.white)),
           ],
         ),
       ),

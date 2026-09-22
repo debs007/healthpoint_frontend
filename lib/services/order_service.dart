@@ -22,14 +22,12 @@ class OrderService {
   /// franchise_id (required), fulfillment_type (required, delivery|pickup),
   /// address_id (required only when fulfillment_type is delivery).
   Future<Order> placeOrder({
-    required int franchiseId,
     required String fulfillmentType,
     int? addressId,
   }) async {
     final response = await _client.post(
       ApiEndpoints.orders,
       data: {
-        'franchise_id': franchiseId,
         'fulfillment_type': fulfillmentType,
         if (addressId != null) 'address_id': addressId,
       },

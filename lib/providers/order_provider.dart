@@ -41,11 +41,10 @@ class OrderProvider extends ChangeNotifier {
   Future<Order> getOrderDetail(int id) => _orderService.getOrder(id);
 
   Future<Order> placeOrder({
-    required int franchiseId,
     required String fulfillmentType,
     int? addressId,
   }) =>
-      _orderService.placeOrder(franchiseId: franchiseId, fulfillmentType: fulfillmentType, addressId: addressId);
+      _orderService.placeOrder(fulfillmentType: fulfillmentType, addressId: addressId);
 
   Future<Map<String, dynamic>> initiatePayment(int orderId) => _orderService.initiatePayment(orderId);
 
