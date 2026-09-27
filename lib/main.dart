@@ -4,6 +4,7 @@ import 'core/constants/app_constants.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/address_provider.dart';
+import 'providers/help_support_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/brand_provider.dart';
@@ -22,6 +23,7 @@ import 'providers/product_provider.dart';
 import 'providers/wallet_provider.dart';
 import 'screens/auth/splash_screen.dart';
 import 'services/address_service.dart';
+import 'services/help_support_service.dart';
 import 'services/appointment_service.dart';
 import 'services/auth_service.dart';
 import 'services/brand_service.dart';
@@ -72,6 +74,7 @@ class SusthayanApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => WalletProvider(WalletService(apiClient))),
         ChangeNotifierProvider(create: (_) => OrderProvider(OrderService(apiClient))),
         ChangeNotifierProvider(create: (_) => AddressProvider(AddressService(apiClient))),
+        ChangeNotifierProvider(create: (_) => HelpSupportProvider(HelpSupportService(apiClient))),
         ChangeNotifierProvider(create: (_) => AppointmentProvider(AppointmentService(apiClient))),
         ChangeNotifierProvider(create: (_) => BrandProvider(BrandService(apiClient))),
         ChangeNotifierProvider(create: (_) => PrescriptionProvider(PrescriptionService(apiClient))),

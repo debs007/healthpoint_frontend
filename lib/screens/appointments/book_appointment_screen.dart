@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_constants.dart';
 import '../../models/doctor.dart';
 import '../../models/doctor_hospital_affiliation.dart';
 import '../../providers/appointment_provider.dart';
+import '../order_confirmation/order_confirmation_screen.dart';
 import '../payment/payment_screen.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -48,9 +48,16 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     if (!mounted) return;
 
     if (order != null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => PaymentScreen(order: order)),
-      );
+      if (order.status == 'pending_payment') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => PaymentScreen(order: order)),
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => OrderConfirmationScreen(order: order)),
+          (route) => false,
+        );
+      }
     } else {
       final error = context.read<AppointmentProvider>().errorMessage;
       if (error != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -124,7 +131,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 onPressed: (_selectedDate != null && !provider.isBooking) ? _submit : null,
                 child: provider.isBooking
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text('Proceed to Pay ${AppConstants.currencySymbol}${affiliation.consultationCharge.toStringAsFixed(2)}'),
+                    : const Text('Place booking'),
               ),
             ),
           ),

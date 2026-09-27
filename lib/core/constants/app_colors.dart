@@ -27,8 +27,14 @@ class AppColors {
   static const Color surfaceTintDeep = Color(0xFFA8D0C8);
 
   // --- Neutrals (standard choices - confirm against exact designs if available) ---
-  static const Color background = Color(0xFFFAFAFA);
+  static const Color background = Color(0xFFFFFFFF);
   static const Color surface = Color(0xFFFFFFFF);
+
+  /// A faint, deliberately subtle tint for elements that need to stay
+  /// visibly distinct from the pure-white screen behind them - the
+  /// search bar specifically, once its background could otherwise be
+  /// mistaken for empty page.
+  static const Color surfaceMuted = Color(0xFFF5F6F7);
   static const Color textPrimary = Color(0xFF1A1A1A);
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color textMuted = Color(0xFF9CA3AF);

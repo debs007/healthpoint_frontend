@@ -104,10 +104,21 @@ class _OrderDetailBody extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 20),
-        Text(order.orderType == 'lab_test' ? 'Test Booked' : 'Items', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+        Text(
+          order.orderType == 'lab_test'
+              ? 'Test Booked'
+              : order.orderType == 'appointment'
+                  ? 'Appointment Details'
+                  : 'Items',
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+        ),
         const SizedBox(height: 10),
-        if (order.orderType == 'lab_test' && order.labTestBooking != null)
-          _LabTestBookingCard(booking: order.labTestBooking!)
+        if (order.orderType == 'lab_test' && order.labTestBookings.isNotEmpty)
+          _LabTestBookingCard(bookings: order.labTestBookings)
+        else if (order.orderType == 'lab_test' && order.labTestBooking != null)
+          _LabTestBookingCard(bookings: [order.labTestBooking!])
+        else if (order.orderType == 'appointment' && order.appointmentBooking != null)
+          _AppointmentBookingCard(booking: order.appointmentBooking!)
         else if (order.items.isEmpty)
           Text('No item details available.', style: TextStyle(color: AppColors.textMuted))
         else
@@ -166,9 +177,51 @@ class _OrderDetailBody extends StatelessWidget {
 }
 
 class _LabTestBookingCard extends StatelessWidget {
-  const _LabTestBookingCard({required this.booking});
+  const _LabTestBookingCard({required this.bookings});
 
-  final LabTestBookingInfo booking;
+  final List<LabTestBookingInfo> bookings;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = bookings.first;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final booking in bookings) ...[
+            Text(booking.testName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+            if (booking != bookings.last) const SizedBox(height: 4),
+          ],
+          const SizedBox(height: 10),
+          // Every test in one booking shares the same visit type, center,
+          // and date - shown once here rather than repeated per test.
+          _DetailLine(
+            icon: first.bookingType == 'center_visit' ? Icons.storefront_outlined : Icons.home_outlined,
+            label: first.bookingType == 'center_visit' ? 'Center visit' : 'Home collection',
+          ),
+          if (first.centerName != null) ...[
+            const SizedBox(height: 6),
+            _DetailLine(icon: Icons.local_hospital_outlined, label: first.centerName!),
+          ],
+          if (first.centerAddress != null) ...[
+            const SizedBox(height: 6),
+            _DetailLine(icon: Icons.location_on_outlined, label: first.centerAddress!),
+          ],
+          const SizedBox(height: 6),
+          _DetailLine(icon: Icons.calendar_today_outlined, label: DateFormat('EEE, dd MMM yyyy').format(first.scheduledDate)),
+        ],
+      ),
+    );
+  }
+}
+
+class _AppointmentBookingCard extends StatelessWidget {
+  const _AppointmentBookingCard({required this.booking});
+
+  final AppointmentBookingInfo booking;
 
   @override
   Widget build(BuildContext context) {
@@ -178,21 +231,20 @@ class _LabTestBookingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(booking.testName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          Text('Dr. ${booking.doctorName}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+          if (booking.doctorDegree != null) ...[
+            const SizedBox(height: 2),
+            Text(booking.doctorDegree!, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+          ],
           const SizedBox(height: 10),
-          _DetailLine(
-            icon: booking.bookingType == 'center_visit' ? Icons.storefront_outlined : Icons.home_outlined,
-            label: booking.bookingType == 'center_visit' ? 'Center visit' : 'Home collection',
-          ),
-          if (booking.centerName != null) ...[
+          if (booking.hospitalName != null) ...[
+            _DetailLine(icon: Icons.local_hospital_outlined, label: booking.hospitalName!),
             const SizedBox(height: 6),
-            _DetailLine(icon: Icons.local_hospital_outlined, label: booking.centerName!),
           ],
-          if (booking.centerAddress != null) ...[
+          if (booking.hospitalAddress != null) ...[
+            _DetailLine(icon: Icons.location_on_outlined, label: booking.hospitalAddress!),
             const SizedBox(height: 6),
-            _DetailLine(icon: Icons.location_on_outlined, label: booking.centerAddress!),
           ],
-          const SizedBox(height: 6),
           _DetailLine(icon: Icons.calendar_today_outlined, label: DateFormat('EEE, dd MMM yyyy').format(booking.scheduledDate)),
         ],
       ),

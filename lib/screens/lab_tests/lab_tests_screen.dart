@@ -19,7 +19,11 @@ class _LabTestsScreenState extends State<LabTestsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<LabTestProvider>().loadTests();
+      final provider = context.read<LabTestProvider>();
+      // A stale selection from a previous visit shouldn't silently
+      // carry over into a fresh trip to this screen.
+      provider.clearSelection();
+      provider.loadTests();
     });
   }
 
@@ -44,19 +48,63 @@ class _LabTestsScreenState extends State<LabTestsScreen> {
             grouped.putIfAbsent(test.category ?? 'Other', () => []).add(test);
           }
 
-          return RefreshIndicator(
-            onRefresh: provider.loadTests,
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              children: grouped.entries.expand((entry) => [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8, top: 8),
-                      child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+          return Column(
+            children: [
+              Expanded(
+                child: RefreshIndicator(
+                  onRefresh: provider.loadTests,
+                  child: ListView(
+                    padding: EdgeInsets.fromLTRB(16, 16, 16, provider.selectedTestIds.isEmpty ? 16 : 90),
+                    children: grouped.entries.expand((entry) => [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8, top: 8),
+                            child: Text(entry.key, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          ),
+                          ...entry.value.map((test) => _LabTestTile(
+                                test: test,
+                                selected: provider.selectedTestIds.contains(test.id),
+                                onToggle: () => provider.toggleTestSelection(test.id),
+                              )),
+                          const SizedBox(height: 8),
+                        ]).toList(),
+                  ),
+                ),
+              ),
+              if (provider.selectedTestIds.isNotEmpty)
+                SafeArea(
+                  top: false,
+                  child: InkWell(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => BookLabTestScreen(tests: provider.selectedTests)),
                     ),
-                    ...entry.value.map((test) => _LabTestTile(test: test)),
-                    const SizedBox(height: 8),
-                  ]).toList(),
-            ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      color: AppColors.primary,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
+                            child: Text(
+                              '${provider.selectedTestIds.length}',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            provider.selectedTestIds.length == 1 ? 'Test selected' : 'Tests selected',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                          ),
+                          const Spacer(),
+                          const Text('Continue', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 14)),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           );
         },
       ),
@@ -65,59 +113,63 @@ class _LabTestsScreenState extends State<LabTestsScreen> {
 }
 
 class _LabTestTile extends StatelessWidget {
-  const _LabTestTile({required this.test});
+  const _LabTestTile({required this.test, required this.selected, required this.onToggle});
 
   final LabTest test;
+  final bool selected;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(border: Border.all(color: AppColors.border), borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(test.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      test.requiresCenterVisit ? Icons.storefront_outlined : Icons.home_outlined,
-                      size: 13,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      test.requiresCenterVisit ? 'Center visit' : 'Home visit',
-                      style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
-                    ),
+    return InkWell(
+      onTap: onToggle,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.06) : null,
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(test.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        test.requiresCenterVisit ? Icons.storefront_outlined : Icons.home_outlined,
+                        size: 13,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        test.requiresCenterVisit ? 'Center visit' : 'Home visit',
+                        style: TextStyle(fontSize: 11.5, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                  if (test.sampleType != null) ...[
+                    const SizedBox(height: 2),
+                    Text(test.sampleType!, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
                   ],
-                ),
-                if (test.sampleType != null) ...[
-                  const SizedBox(height: 2),
-                  Text(test.sampleType!, style: TextStyle(fontSize: 11.5, color: AppColors.textMuted)),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${AppConstants.currencySymbol}${test.price.toStringAsFixed(2)}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                  ),
                 ],
-                const SizedBox(height: 6),
-                Text(
-                  '${AppConstants.currencySymbol}${test.price.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
-                ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => BookLabTestScreen(test: test)),
-            ),
-            style: ElevatedButton.styleFrom(minimumSize: const Size(80, 36), textStyle: const TextStyle(fontSize: 12)),
-            child: const Text('Book'),
-          ),
-        ],
+            const SizedBox(width: 10),
+            Checkbox(value: selected, onChanged: (_) => onToggle()),
+          ],
+        ),
       ),
     );
   }

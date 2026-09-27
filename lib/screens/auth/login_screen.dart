@@ -37,12 +37,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _socialNotConnected(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$provider sign-in isn\'t connected on the backend yet - mobile + OTP below works.')),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -117,45 +111,34 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        const Expanded(child: Divider()),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('OR', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                        ),
-                        const Expanded(child: Divider()),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: Text('Continue with', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 28),
 
-                    // Google / Apple - visually matches the design, but
-                    // neither is wired to anything real: there's no OAuth
-                    // integration on the backend for either. Tapping
-                    // either says so directly rather than doing nothing
-                    // or pretending to work.
-                    SizedBox(
+                    // Replaces what used to be two non-functional social
+                    // login buttons (no OAuth integration existed on the
+                    // backend for either) - a feature highlight instead,
+                    // covering different ground than the trust badges
+                    // below rather than repeating them.
+                    Container(
                       width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _socialNotConnected('Google'),
-                        icon: Image.asset(AppImages.socialGoogle, width: 20, height: 20),
-                        label: const Text('Continue with Google'),
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.textPrimary, side: const BorderSide(color: AppColors.border)),
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _socialNotConnected('Apple'),
-                        icon: Image.asset(AppImages.socialApple, width: 20, height: 20),
-                        label: const Text('Continue with Apple'),
-                        style: OutlinedButton.styleFrom(foregroundColor: AppColors.textPrimary, side: const BorderSide(color: AppColors.border)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Everything for your health, in one place',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 16),
+                          const _FeatureRow(icon: Icons.local_pharmacy_outlined, text: 'Order medicines in minutes, delivered to your door'),
+                          const SizedBox(height: 12),
+                          const _FeatureRow(icon: Icons.science_outlined, text: 'Book lab tests and doctor consultations'),
+                          const SizedBox(height: 12),
+                          const _FeatureRow(icon: Icons.folder_shared_outlined, text: 'Keep your family\'s health records in one place'),
+                        ],
                       ),
                     ),
 
@@ -175,6 +158,34 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FeatureRow extends StatelessWidget {
+  const _FeatureRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+          child: Icon(icon, size: 18, color: AppColors.primary),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.3)),
+          ),
+        ),
+      ],
     );
   }
 }

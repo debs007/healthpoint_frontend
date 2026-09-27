@@ -27,6 +27,7 @@ class ApiEndpoints {
   static const String labTests = '/customer/lab-tests';
   static const String labTestBlockedDates = '/customer/lab-tests/blocked-dates';
   static String labTestCenters(int labTestId) => '/customer/lab-tests/$labTestId/centers';
+  static const String labTestCentersForMultiple = '/customer/lab-tests/centers-for-multiple';
   static const String labTestBookings = '/customer/lab-test-bookings';
 
   // --- Medicine Reminders ---
@@ -84,4 +85,7 @@ class ApiEndpoints {
   static String initiatePayment(int orderId) => '/customer/orders/$orderId/payments/initiate';
   static const String verifyPayment = '/payments/verify';
   static String refunds(int orderId) => '/customer/orders/$orderId/refunds';
+
+  // --- Help & Support ---
+  static const String supportQueries = '/customer/support-queries';
 }

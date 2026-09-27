@@ -172,11 +172,22 @@ class _OrderCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(order.orderType == 'lab_test' ? 'Test' : 'Items', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     Text(
                       order.orderType == 'lab_test'
-                          ? (order.labTestBooking?.testName ?? 'Lab test')
-                          : '${order.items.length} item(s)',
+                          ? 'Test'
+                          : order.orderType == 'appointment'
+                              ? 'Appointment'
+                              : 'Items',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    ),
+                    Text(
+                      order.orderType == 'lab_test'
+                          ? (order.labTestBookings.isNotEmpty
+                              ? order.labTestBookings.first.testName + (order.labTestBookings.length > 1 ? ' +${order.labTestBookings.length - 1} more' : '')
+                              : (order.labTestBooking?.testName ?? 'Lab test'))
+                          : order.orderType == 'appointment'
+                              ? (order.appointmentBooking != null ? 'Dr. ${order.appointmentBooking!.doctorName}' : 'Appointment')
+                              : '${order.items.length} item(s)',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w600),

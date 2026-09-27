@@ -10,6 +10,7 @@ import '../../providers/wallet_provider.dart';
 import '../address_book/address_book_screen.dart';
 import '../auth/login_screen.dart';
 import '../edit_profile/edit_profile_screen.dart';
+import '../help_support/help_support_screen.dart';
 import '../medicine_reminders/medicine_reminders_screen.dart';
 import '../prescriptions/prescriptions_screen.dart';
 import '../wallet/wallet_screen.dart';
@@ -186,8 +187,8 @@ class _AccountScreenState extends State<AccountScreen> {
           _MenuTile(
             icon: AppIcons.helpSupport,
             label: 'Help & Support',
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No help/support endpoint exists in the API yet')),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
             ),
           ),
           _MenuTile(icon: AppIcons.logout, label: 'Logout', onTap: _confirmLogout, isDestructive: true),
@@ -283,7 +284,7 @@ class _ComingSoonMenuTile extends StatelessWidget {
       title: Text(label, style: TextStyle(color: AppColors.textMuted)),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(6)),
+        decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(6)),
         child: Text('Soon', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
       ),
       onTap: null,

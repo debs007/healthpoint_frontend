@@ -8,18 +8,22 @@ import '../../models/lab_center.dart';
 import '../../models/lab_test.dart';
 import '../../providers/address_provider.dart';
 import '../../providers/lab_test_provider.dart';
+import '../order_confirmation/order_confirmation_screen.dart';
 import '../payment/payment_screen.dart';
 
-/// Center selection is always shown here, regardless of the test's visit
+/// Center selection is always shown here, regardless of any test's visit
 /// type - even for a home-collection test, the customer picks which
 /// center processes their sample (their own preference for which lab to
 /// trust), they just also pick an address alongside it. Only the address
 /// step and the set of qualifying centers differ by visit type - not
 /// whether center selection happens at all.
+///
+/// [tests] is always a list, even for a single test booked on its own -
+/// one code path for both cases, matching the provider/service/backend.
 class BookLabTestScreen extends StatefulWidget {
-  const BookLabTestScreen({super.key, required this.test});
+  const BookLabTestScreen({super.key, required this.tests});
 
-  final LabTest test;
+  final List<LabTest> tests;
 
   @override
   State<BookLabTestScreen> createState() => _BookLabTestScreenState();
@@ -32,11 +36,17 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
   DateTime? _selectedDate;
   bool _loadingCenters = true;
 
+  bool get _anyRequiresCenterVisit => widget.tests.any((t) => t.requiresCenterVisit);
+  bool get _anyHomeCollectionEligible => widget.tests.any((t) => !t.requiresCenterVisit);
+
+  double get _testsBasePrice => widget.tests.fold(0.0, (sum, t) => sum + t.price);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final centers = await context.read<LabTestProvider>().loadCentersFor(widget.test.id);
+      final testIds = widget.tests.map((t) => t.id).toList();
+      final centers = await context.read<LabTestProvider>().loadCentersForMultiple(testIds);
       if (!mounted) return;
       setState(() {
         _centers = centers;
@@ -44,7 +54,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
       });
 
       final addressProvider = context.read<AddressProvider>();
-      if (!widget.test.requiresCenterVisit && addressProvider.addresses.isEmpty) {
+      if (_anyHomeCollectionEligible && addressProvider.addresses.isEmpty) {
         addressProvider.loadAddresses();
       }
     });
@@ -52,7 +62,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
 
   bool get _canSubmit {
     if (_selectedCenter == null || _selectedDate == null) return false;
-    if (!widget.test.requiresCenterVisit && _selectedAddress == null) return false;
+    if (_anyHomeCollectionEligible && _selectedAddress == null) return false;
     return true;
   }
 
@@ -77,7 +87,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
         maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) => _centers.isEmpty
-            ? const Center(child: Text('No centers currently offer this test.'))
+            ? const Center(child: Text('No centers currently offer all the selected tests.'))
             : ListView.separated(
                 controller: scrollController,
                 padding: const EdgeInsets.all(16),
@@ -97,8 +107,8 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
                     leading: Icon(Icons.local_hospital_outlined, color: AppColors.primary),
                     title: Text(center.name, style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text(center.fullAddress, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    trailing: center.price != null
-                        ? Text('${AppConstants.currencySymbol}${center.price!.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))
+                    trailing: center.totalPrice != null
+                        ? Text('${AppConstants.currencySymbol}${center.totalPrice!.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))
                         : null,
                     onTap: () => Navigator.pop(context, center),
                   );
@@ -113,7 +123,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
     if (!_canSubmit) return;
 
     final order = await context.read<LabTestProvider>().book(
-          labTestId: widget.test.id,
+          labTestIds: widget.tests.map((t) => t.id).toList(),
           labCenterId: _selectedCenter!.id,
           scheduledDate: DateFormat('yyyy-MM-dd').format(_selectedDate!),
           addressId: _selectedAddress?.id,
@@ -122,9 +132,16 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
     if (!mounted) return;
 
     if (order != null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => PaymentScreen(order: order)),
-      );
+      if (order.status == 'pending_payment') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => PaymentScreen(order: order)),
+        );
+      } else {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => OrderConfirmationScreen(order: order)),
+          (route) => false,
+        );
+      }
     } else {
       final error = context.read<LabTestProvider>().errorMessage;
       if (error != null) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -133,11 +150,12 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final test = widget.test;
-    final price = _selectedCenter?.price ?? test.price;
+    final tests = widget.tests;
+    final price = _selectedCenter?.totalPrice ?? _testsBasePrice;
+    final instructions = tests.where((t) => t.preparationInstructions != null).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Book Test')),
+      appBar: AppBar(title: Text(tests.length == 1 ? 'Book Test' : 'Book ${tests.length} Tests')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -147,24 +165,52 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(test.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(
-                  '${AppConstants.currencySymbol}${price.toStringAsFixed(2)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.primary),
+                for (final test in tests) ...[
+                  Row(
+                    children: [
+                      Expanded(child: Text(test.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14))),
+                      Text(
+                        '${AppConstants.currencySymbol}${(_selectedCenter?.testPrices[test.id] ?? test.price).toStringAsFixed(2)}',
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                  if (test != tests.last) const SizedBox(height: 6),
+                ],
+                const Divider(height: 20),
+                Row(
+                  children: [
+                    const Text('Total', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    const Spacer(),
+                    Text(
+                      '${AppConstants.currencySymbol}${price.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                    ),
+                  ],
                 ),
-                if (_selectedCenter != null)
+                if (_selectedCenter != null) ...[
+                  const SizedBox(height: 2),
                   Text('at ${_selectedCenter!.name}', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                if (test.preparationInstructions != null) ...[
+                ],
+                if (instructions.isNotEmpty) ...[
                   const SizedBox(height: 8),
-                  Text('Before your test: ${test.preparationInstructions}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  for (final test in instructions)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '${tests.length > 1 ? '${test.name}: ' : ''}Before your test: ${test.preparationInstructions}',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                    ),
                 ],
               ],
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            test.requiresCenterVisit ? 'This test requires a center visit' : 'A technician will visit your home - choose which center processes your sample',
+            _anyRequiresCenterVisit
+                ? (tests.length > 1 ? 'At least one selected test requires a center visit' : 'This test requires a center visit')
+                : 'A technician will visit your home - choose which center processes your sample(s)',
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           ),
           const SizedBox(height: 12),
@@ -207,7 +253,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
             onTap: _pickDate,
           ),
 
-          if (!test.requiresCenterVisit) ...[
+          if (_anyHomeCollectionEligible) ...[
             const SizedBox(height: 16),
             const Text('Collection Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
@@ -241,7 +287,7 @@ class _BookLabTestScreenState extends State<BookLabTestScreen> {
                 onPressed: (_canSubmit && !provider.isBooking) ? _submit : null,
                 child: provider.isBooking
                     ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : Text('Proceed to Pay ${AppConstants.currencySymbol}${price.toStringAsFixed(2)}'),
+                    : const Text('Place booking'),
               ),
             ),
           ),

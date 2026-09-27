@@ -177,13 +177,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Matches the design's label - worth being clear in
-                      // code (not to the user) that this isn't actually
-                      // personalized reorder data, just the product
-                      // catalog. A genuine "order again" would need to
-                      // derive this from OrderProvider's real order
-                      // history, which isn't wired up yet.
-                      const Text('Order Again', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      // Renamed from "Order Again" to "Quick Order" - this
+                      // was already showing the general product catalog,
+                      // not real reorder history (that would need to come
+                      // from OrderProvider's actual order history, which
+                      // isn't wired up here), so this label is honest
+                      // about what's actually shown rather than implying
+                      // personalized data that isn't there.
+                      const Text('Quick Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                       InkWell(
                         onTap: () => Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const ProductListScreen()),
@@ -254,8 +255,9 @@ class _SearchBarState extends State<_SearchBar> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceMuted,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -643,7 +645,7 @@ class _ProductRow extends StatelessWidget {
 }
 
 /// One horizontal row per category, newest products first - sits between
-/// "Order Again" and "Health Articles". Silently shows nothing while
+/// "Quick Order" and "Health Articles". Silently shows nothing while
 /// loading or if a category has no products yet, rather than a row of
 /// empty placeholders - this section is purely additive polish, not
 /// something that should ever block or clutter the page.

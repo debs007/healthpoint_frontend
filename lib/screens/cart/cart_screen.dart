@@ -211,7 +211,7 @@ class _CartItemTile extends StatelessWidget {
           Container(
             width: 48,
             height: 48,
-            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(8)),
             child: Icon(Icons.medication_outlined, color: AppColors.textMuted),
           ),
           const SizedBox(width: 12),

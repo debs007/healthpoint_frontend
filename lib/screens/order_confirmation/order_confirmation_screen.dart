@@ -70,17 +70,27 @@ class OrderConfirmationScreen extends StatelessWidget {
             const Divider(height: 28),
             const Text('Order Summary', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 12),
-            ...order.items.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(item.productName, style: const TextStyle(fontSize: 13))),
-                      Text('x${item.quantity}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                      const SizedBox(width: 12),
-                      Text('${AppConstants.currencySymbol}${item.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    ],
-                  ),
-                )),
+            if (order.orderType == 'lab_test' && order.labTestBookings.isNotEmpty)
+              _InfoRow(
+                label: order.labTestBookings.length > 1 ? 'Tests booked' : 'Test booked',
+                value: order.labTestBookings.map((b) => b.testName).join(', '),
+              )
+            else if (order.orderType == 'lab_test' && order.labTestBooking != null)
+              _InfoRow(label: 'Test booked', value: order.labTestBooking!.testName)
+            else if (order.orderType == 'appointment' && order.appointmentBooking != null)
+              _InfoRow(label: 'Appointment with', value: 'Dr. ${order.appointmentBooking!.doctorName}')
+            else
+              ...order.items.map((item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(item.productName, style: const TextStyle(fontSize: 13))),
+                        Text('x${item.quantity}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        const SizedBox(width: 12),
+                        Text('${AppConstants.currencySymbol}${item.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  )),
             const SizedBox(height: 10),
             _PriceRow(label: 'Subtotal', amount: order.subtotalAmount),
             if (order.discountAmount > 0) _PriceRow(label: 'Discount', amount: -order.discountAmount, isDiscount: true),

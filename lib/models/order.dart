@@ -47,6 +47,35 @@ class LabTestBookingInfo {
   }
 }
 
+class AppointmentBookingInfo {
+  const AppointmentBookingInfo({
+    required this.doctorName,
+    this.doctorDegree,
+    this.hospitalName,
+    this.hospitalAddress,
+    required this.scheduledDate,
+    required this.status,
+  });
+
+  final String doctorName;
+  final String? doctorDegree;
+  final String? hospitalName;
+  final String? hospitalAddress;
+  final DateTime scheduledDate;
+  final String status;
+
+  factory AppointmentBookingInfo.fromJson(Map<String, dynamic> json) {
+    return AppointmentBookingInfo(
+      doctorName: json['doctor_name'] as String? ?? '',
+      doctorDegree: json['doctor_degree'] as String?,
+      hospitalName: json['hospital_name'] as String?,
+      hospitalAddress: json['hospital_address'] as String?,
+      scheduledDate: DateTime.parse(json['scheduled_date'] as String),
+      status: json['status'] as String? ?? 'pending',
+    );
+  }
+}
+
 class Order {
   const Order({
     required this.id,
@@ -62,6 +91,8 @@ class Order {
     this.franchiseName,
     this.items = const [],
     this.labTestBooking,
+    this.labTestBookings = const [],
+    this.appointmentBooking,
     this.confirmedAt,
     this.preparedAt,
     this.outForDeliveryAt,
@@ -88,6 +119,19 @@ class Order {
   // order existed and could be paid for, but nothing showed what test
   // was actually booked.
   final LabTestBookingInfo? labTestBooking;
+  // The actual gap for multi-test bookings: the backend sends every
+  // booked test under this plural key (lab_test_bookings), but nothing
+  // on this side ever read it - the UI only ever looked at the singular
+  // labTestBooking above, which was never designed to represent more
+  // than one test. Populated for every lab-test order, including a
+  // single-test one (as a one-item list) - this is the field screens
+  // should actually display from, not the singular one above.
+  final List<LabTestBookingInfo> labTestBookings;
+  // Same reasoning as labTestBooking - populated only when orderType is
+  // 'appointment'. This was the actual gap: labTestBooking was already
+  // added, appointmentBooking never was, so a doctor booking fell all
+  // the way through to the generic "no items" empty state.
+  final AppointmentBookingInfo? appointmentBooking;
   final DateTime? confirmedAt;
   final DateTime? preparedAt;
   final DateTime? outForDeliveryAt;
@@ -100,6 +144,8 @@ class Order {
   factory Order.fromJson(Map<String, dynamic> json) {
     final itemsJson = json['items'] as List<dynamic>? ?? [];
     final labTestBookingJson = json['lab_test_booking'] as Map<String, dynamic>?;
+    final labTestBookingsJson = json['lab_test_bookings'] as List<dynamic>? ?? [];
+    final appointmentBookingJson = json['appointment_booking'] as Map<String, dynamic>?;
 
     DateTime? parseNullable(String? key) =>
         json[key] != null ? DateTime.tryParse(json[key].toString()) : null;
@@ -118,6 +164,8 @@ class Order {
       franchiseName: json['franchise']?['name'] as String?,
       items: itemsJson.map((e) => OrderItemLine.fromJson(e as Map<String, dynamic>)).toList(),
       labTestBooking: labTestBookingJson != null ? LabTestBookingInfo.fromJson(labTestBookingJson) : null,
+      labTestBookings: labTestBookingsJson.map((e) => LabTestBookingInfo.fromJson(e as Map<String, dynamic>)).toList(),
+      appointmentBooking: appointmentBookingJson != null ? AppointmentBookingInfo.fromJson(appointmentBookingJson) : null,
       confirmedAt: parseNullable('confirmed_at'),
       preparedAt: parseNullable('prepared_at'),
       outForDeliveryAt: parseNullable('out_for_delivery_at'),

@@ -33,12 +33,20 @@ class NotificationScheduler {
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
     );
 
+    // Only the standard "allow notifications" prompt - a normal in-app
+    // dialog, not a redirect anywhere. Deliberately NOT also requesting
+    // exact-alarm permission: that one doesn't show an in-app dialog at
+    // all on Android 12+, it sends the user straight to the phone's own
+    // system settings ("Alarms & reminders"), and the toggle there only
+    // actually works if SCHEDULE_EXACT_ALARM is declared in the native
+    // Android manifest - a platform file this codebase can't set from
+    // here. A medicine reminder doesn't need second-perfect timing the
+    // way a wake-up alarm would, so scheduling inexactly below avoids
+    // needing this permission at all, rather than depending on a manual
+    // manifest step and a settings flow that wasn't working.
     await _plugin
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
-    await _plugin
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestExactAlarmsPermission();
 
     _initialized = true;
   }
@@ -80,7 +88,7 @@ class NotificationScheduler {
           ),
           iOS: DarwinNotificationDetails(),
         ),
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
         matchDateTimeComponents: DateTimeComponents.time,
         uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.wallClockTime 
       );

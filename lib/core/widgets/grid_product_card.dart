@@ -37,7 +37,7 @@ class GridProductCard extends StatelessWidget {
             AspectRatio(
               aspectRatio: 1.3,
               child: Container(
-                decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: AppColors.surfaceMuted, borderRadius: BorderRadius.circular(8)),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: product.imageUrl != null

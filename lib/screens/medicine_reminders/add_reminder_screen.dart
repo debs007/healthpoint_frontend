@@ -79,6 +79,11 @@ class _AddReminderScreenState extends State<AddReminderScreen> {
 
     if (success) {
       Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Your reminder has been saved successfully!'), behavior: SnackBarBehavior.floating),
+      );
+      //go back to the previous screen and show a success message
+       Navigator.of(context).pop();
     } else if (provider.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(provider.errorMessage!)));
     }
