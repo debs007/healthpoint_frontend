@@ -65,6 +65,7 @@ class ApiEndpoints {
   static String address(int id) => '/customer/addresses/$id';
 
   // --- Products ---
+  static const String categories = '/customer/categories';
   static const String products = '/customer/products';
   static String product(int id) => '/customer/products/$id';
 

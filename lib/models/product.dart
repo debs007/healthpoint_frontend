@@ -37,7 +37,10 @@ class Product {
   // endpoint (GET /coupons/{id}/products) - null everywhere else.
   final double? couponPrice;
 
-  bool get inStock => (availableStock ?? 0) > 0;
+  // Every catalogued product is always purchasable - a franchise's stock
+  // (or lack of it) is a fulfillment-side concern handled after the order
+  // is placed, not a reason to block the customer from ordering it.
+  bool get inStock => true;
 
   bool get hasDiscount => mrp != null && sellingPrice != null && sellingPrice! < mrp!;
 

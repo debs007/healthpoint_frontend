@@ -39,27 +39,17 @@ class ProductService {
     return data.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  /// Categories aren't behind their own endpoint on the customer side yet
-  /// (only Admin manages/lists them) - a real GET /customer/categories
-  /// would be the correct fix. This derives a category list from whatever
-  /// names are actually present on returned products, so it never shows
-  /// a fabricated label - a product with no category name attached is
-  /// just left out rather than guessed at. Count is a genuine tally of
-  /// products sharing that category_id, not a placeholder number.
+  /// The real GET /customer/categories endpoint - every active category,
+  /// independent of which products happen to be on any given page.
+  /// Previously this derived a category list from a single page of
+  /// getProducts() results instead, which only ever discovered whichever
+  /// categories that one page's products happened to belong to - a
+  /// category with few/no products among that page (or simply listed
+  /// later) never showed up at all, regardless of whether it actually
+  /// existed or had other products elsewhere.
   Future<List<Category>> getCategories() async {
-    final products = await getProducts();
-    final names = <int, String>{};
-    final counts = <int, int>{};
-
-    for (final product in products) {
-      if (product.categoryId != null && product.categoryName != null) {
-        names[product.categoryId!] = product.categoryName!;
-        counts[product.categoryId!] = (counts[product.categoryId!] ?? 0) + 1;
-      }
-    }
-
-    return names.entries
-        .map((e) => Category(id: e.key, name: e.value, productCount: counts[e.key]))
-        .toList();
+    final response = await _client.get(ApiEndpoints.categories);
+    final data = response['categories'] as List? ?? [];
+    return data.map((c) => Category.fromJson(c as Map<String, dynamic>)).toList();
   }
 }
