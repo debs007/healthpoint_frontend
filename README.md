@@ -9,9 +9,12 @@ Built against Flutter 3.44+ / Dart 3.9+. Wired to the real Laravel backend
 
  ### Screenshots
  <p align="center">
-<img src="screenshots/s1.png" width="300">
-<img src="screenshots/s2.png" width="300">
-<img src="screenshots/s3.png" width="300">
+<img src="screenshots/s1.jpeg" width="300">
+<img src="screenshots/s2.jpeg" width="300">
+<img src="screenshots/s3.jpeg" width="300">
+<img src="screenshots/s4.jpeg" width="300">
+<img src="screenshots/s5.jpeg" width="300">
+<img src="screenshots/s6.jpeg" width="300">
 </p>
 
 ## Setup
