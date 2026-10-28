@@ -105,7 +105,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           AspectRatio(
             aspectRatio: 1.2,
             child: Container(
-              color: AppColors.surfaceMuted,
+              color: AppColors.surface,
               child: product.imageUrl != null
                   ? Image.network(
                       product.imageUrl!,

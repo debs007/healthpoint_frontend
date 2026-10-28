@@ -1,8 +1,18 @@
-# HealthPoint - Customer App (Flutter)
+# Susthayan - Customer App (Flutter)
 
 Built against Flutter 3.44+ / Dart 3.9+. Wired to the real Laravel backend
 (`medicine.nebulaqueststudios.com/api` by default - see
 `lib/core/constants/app_constants.dart` to change it).
+
+### Descriptions
+ An app made of medicine companies to sell medicine drugs same like TATA 1mg
+
+ ### Screenshots
+ <p align="center">
+<img src="screenshots/s1.png" width="300">
+<img src="screenshots/s2.png" width="300">
+<img src="screenshots/s3.png" width="300">
+</p>
 
 ## Setup
 

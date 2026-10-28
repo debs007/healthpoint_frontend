@@ -254,7 +254,10 @@ class _CategoryTile extends StatelessWidget {
           Container(
             width: 60,
             height: 60,
-            decoration: const BoxDecoration(color: AppColors.surfaceTint, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.surface, shape: BoxShape.circle, border: Border.all(
+    color: AppColors.surfaceTint,
+    width: 2,
+  )),
             alignment: Alignment.center,
             child: realAsset != null
                 ? Image.asset(realAsset, width: 34, height: 34)
